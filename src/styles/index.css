@@ -206,19 +206,32 @@ a {
 
 .topbar {
   padding: var(--space-2) var(--space-3);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-3);
+  align-items: stretch;
   position: sticky;
   top: var(--space-4);
   z-index: 2;
 }
 
-.topbar-left {
+.topbar-logo {
+  height: 100%;
+  max-height: 120px;
+  width: auto;
+  display: block;
+  align-self: center;
+}
+
+.topbar-content {
+  display: grid;
+  grid-template-rows: auto auto;
+  gap: var(--space-2);
+}
+
+.topbar-search {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
 }
 
 .topbar-actions {
@@ -1027,6 +1040,10 @@ a {
     display: grid;
   }
 
+  .topbar-logo {
+    height: 28px;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
@@ -1085,8 +1102,37 @@ a {
   }
 
   .topbar {
-    flex-direction: column;
+    grid-template-columns: auto 1fr;
     align-items: stretch;
+    padding: var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .topbar-logo {
+    justify-self: start;
+    height: 100%;
+    max-height: 64px;
+  }
+
+  .search-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+
+  .topbar-actions .secondary-btn,
+  .topbar-actions .ghost-btn {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .mobile-nav-toggle {
+    width: 34px;
+    height: 34px;
+  }
+
+  .mobile-nav-toggle {
+    display: grid;
   }
 
   .preset-row {

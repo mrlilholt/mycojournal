@@ -361,3 +361,16 @@
     height: 140px;
   }
 }
+.phone-grow-card--collapsed {
+  min-height: 0;
+  padding-bottom: var(--space-2);
+}
+
+.phone-grow-card--collapsed .phone-grow-card__body {
+  display: none;
+}
+
+.phone-grow-card--collapsed .phone-grow-card__toggle {
+  align-self: flex-start;
+  margin-top: var(--space-1);
+}
