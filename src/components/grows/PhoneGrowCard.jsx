@@ -327,7 +327,13 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
               Mark Harvested
             </button>
           ) : (
-            <div className="phone-grow-card__harvested">Archived</div>
+            <button
+              className="phone-grow-card__unarchive"
+              type="button"
+              onClick={() => actions.unarchiveGrow(grow.id)}
+            >
+              Unarchive
+            </button>
           )}
         </div>
       </div>

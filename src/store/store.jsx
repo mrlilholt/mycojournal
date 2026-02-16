@@ -107,6 +107,22 @@ function reducer(state, action) {
         )
       }
     }
+    case 'UNARCHIVE_GROW': {
+      const id = action.payload
+      return {
+        ...state,
+        grows: state.grows.map((grow) =>
+          grow.id === id
+            ? {
+                ...grow,
+                status: 'active',
+                phase: grow.phase === 'Post-harvest' ? 'Fruiting' : grow.phase,
+                updatedAt: new Date().toISOString()
+              }
+            : grow
+        )
+      }
+    }
     case 'ADD_LOG': {
       const now = new Date().toISOString()
       const newLog = {
@@ -378,6 +394,18 @@ export function StoreProvider({ children }) {
         await updateDoc(doc(db, 'users', user.uid, 'grows', id), {
           status: 'complete',
           phase: 'Post-harvest',
+          updatedAt: new Date().toISOString()
+        })
+      },
+      unarchiveGrow: async (id) => {
+        if (!user) {
+          dispatch({ type: 'UNARCHIVE_GROW', payload: id })
+          return
+        }
+        const grow = state.grows.find((item) => item.id === id)
+        await updateDoc(doc(db, 'users', user.uid, 'grows', id), {
+          status: 'active',
+          phase: grow?.phase === 'Post-harvest' ? 'Fruiting' : grow?.phase,
           updatedAt: new Date().toISOString()
         })
       },
