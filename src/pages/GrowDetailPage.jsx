@@ -8,6 +8,7 @@ import HarvestFormModal from '../components/harvests/HarvestFormModal.jsx'
 import DataTable from '../components/ui/DataTable.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import Sparkline from '../components/ui/Sparkline.jsx'
+import MultiLineChart from '../components/ui/MultiLineChart.jsx'
 import TagPills from '../components/grows/TagPills.jsx'
 import { formatDate, formatDateTime } from '../utils/date.js'
 import { formatTemp } from '../utils/units.js'
@@ -20,7 +21,7 @@ export default function GrowDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { state, actions } = useStore()
-  const [tab, setTab] = useState('timeline')
+  const [tab, setTab] = useState('environment')
   const [logOpen, setLogOpen] = useState(false)
   const [eventOpen, setEventOpen] = useState(false)
   const [harvestOpen, setHarvestOpen] = useState(false)
@@ -50,8 +51,49 @@ export default function GrowDetailPage() {
     return values.reduce((sum, value) => sum + value, 0) / values.length
   }, [logs])
 
+  const sortedLogs = useMemo(
+    () => logs.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)),
+    [logs]
+  )
+
   const tempPoints = logs.map((log) => log.temp).filter((value) => value != null)
   const humidityPoints = logs.map((log) => log.humidity).filter((value) => value != null)
+  const co2Points = logs.map((log) => log.co2).filter((value) => value != null)
+  const growthPoints = logs.map((log) => log.growthMmPerDay).filter((value) => value != null)
+  const flushPoints = logs.map((log) => log.flushHeightMm).filter((value) => value != null)
+
+  const combinedSeries = useMemo(
+    () => [
+      {
+        label: `Temp (°${state.settings.units})`,
+        color: '#4a73c5',
+        values: sortedLogs.map((log) => log.temp)
+      },
+      {
+        label: 'Humidity (%)',
+        color: '#5aa0c9',
+        values: sortedLogs.map((log) => log.humidity)
+      },
+      {
+        label: 'CO2 (ppm)',
+        color: '#7a6bc8',
+        values: sortedLogs.map((log) => log.co2)
+      },
+      {
+        label: 'Growth (mm/day)',
+        color: '#3a7ca5',
+        values: sortedLogs.map((log) => log.growthMmPerDay)
+      }
+    ],
+    [sortedLogs, state.settings.units]
+  )
+
+  const latestLog = useMemo(() => {
+    if (!logs.length) return null
+    return logs
+      .slice()
+      .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
+  }, [logs])
 
   useEffect(() => {
     if (grow) setNotes(grow.notes || '')
@@ -275,6 +317,64 @@ export default function GrowDetailPage() {
 
       {tab === 'environment' && (
         <div className="environment">
+          <div className="metric-grid">
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="label">Temperature</span>
+                <span className="metric-sub">
+                  Latest {latestLog?.temp != null ? formatTemp(latestLog.temp, state.settings.units) : '—'}
+                </span>
+              </div>
+              <div className="metric-value">
+                {avgTemp != null ? formatTemp(avgTemp, state.settings.units) : '—'}
+              </div>
+              <span className="metric-caption">Average</span>
+              <Sparkline points={tempPoints} stroke="#4a73c5" height={64} />
+            </div>
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="label">Humidity</span>
+                <span className="metric-sub">
+                  Latest {latestLog?.humidity != null ? `${latestLog.humidity}%` : '—'}
+                </span>
+              </div>
+              <div className="metric-value">
+                {avgHumidity != null ? `${Math.round(avgHumidity)}%` : '—'}
+              </div>
+              <span className="metric-caption">Average</span>
+              <Sparkline points={humidityPoints} stroke="#5aa0c9" height={64} />
+            </div>
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="label">CO2</span>
+                <span className="metric-sub">
+                  Latest {latestLog?.co2 != null ? `${latestLog.co2} ppm` : '—'}
+                </span>
+              </div>
+              <div className="metric-value">
+                {co2Points.length ? `${Math.round(co2Points[co2Points.length - 1])} ppm` : '—'}
+              </div>
+              <span className="metric-caption">Last reading</span>
+              <Sparkline points={co2Points} stroke="#7a6bc8" height={64} />
+            </div>
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="label">Growth</span>
+                <span className="metric-sub">
+                  Latest {latestLog?.growthMmPerDay != null ? `${latestLog.growthMmPerDay} mm/day` : '—'}
+                </span>
+              </div>
+              <div className="metric-value">
+                {growthPoints.length ? `${growthPoints[growthPoints.length - 1]} mm/day` : '—'}
+              </div>
+              <span className="metric-caption">Last reading</span>
+              <Sparkline points={growthPoints} stroke="#4a8aa6" height={64} />
+            </div>
+          </div>
+          <div className="panel">
+            <h3>Combined Trends</h3>
+            <MultiLineChart series={combinedSeries} height={200} />
+          </div>
           <div className="stat-grid">
             <div className="stat-card">
               <span className="label">Avg Temp</span>
@@ -297,6 +397,18 @@ export default function GrowDetailPage() {
             <div>
               <h3>Humidity</h3>
               <Sparkline points={humidityPoints} stroke="#1b4965" />
+            </div>
+            <div>
+              <h3>CO2</h3>
+              <Sparkline points={co2Points} stroke="#6a4c93" />
+            </div>
+            <div>
+              <h3>Growth (mm/day)</h3>
+              <Sparkline points={growthPoints} stroke="#3a7ca5" />
+            </div>
+            <div>
+              <h3>Flush Height (mm)</h3>
+              <Sparkline points={flushPoints} stroke="#6c8ea4" />
             </div>
           </div>
           <DataTable columns={columns} rows={logs} />

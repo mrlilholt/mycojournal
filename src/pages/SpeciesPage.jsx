@@ -102,7 +102,7 @@ export default function SpeciesPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1>Species Manager</h1>
+          <img className="page-title-image" src="/speciesManager.svg" alt="Species Manager" />
           <p className="muted">Add species and define target presets for future grows.</p>
         </div>
       </div>

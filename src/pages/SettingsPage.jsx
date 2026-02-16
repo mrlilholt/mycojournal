@@ -133,7 +133,7 @@ export default function SettingsPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1>Settings</h1>
+          <img className="page-title-image" src="/settings.svg" alt="Settings" />
           <p className="muted">Tune defaults, health scoring, and backups.</p>
         </div>
       </div>

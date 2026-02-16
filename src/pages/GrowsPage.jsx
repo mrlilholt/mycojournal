@@ -48,7 +48,7 @@ export default function GrowsPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1>Grow Runs</h1>
+          <img className="page-title-image" src="/GROWRuns.svg" alt="Grow Runs" />
           <p className="muted">Track each run, log readings, and spot trends fast.</p>
         </div>
         <Link className="primary-btn" to="/new-grow">

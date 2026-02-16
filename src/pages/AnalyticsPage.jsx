@@ -101,7 +101,7 @@ export default function AnalyticsPage() {
     <div className="page">
       <div className="page-header">
         <div>
-          <h1>Analytics</h1>
+          <img className="page-title-image" src="/analytics.svg" alt="Analytics" />
           <p className="muted">Quick snapshots from your logs and harvests.</p>
         </div>
       </div>
