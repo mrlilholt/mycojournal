@@ -1037,6 +1037,7 @@ a {
     transition: transform 0.25s ease;
     z-index: 20;
     padding: var(--space-5) var(--space-4) var(--space-4);
+    align-items: stretch;
   }
 
   .sidebar.is-open {
@@ -1049,6 +1050,28 @@ a {
     background: rgba(15, 30, 45, 0.25);
     backdrop-filter: blur(4px);
     z-index: 15;
+  }
+
+  .nav {
+    gap: var(--space-1);
+  }
+
+  .nav-link {
+    justify-content: flex-start;
+    padding: 12px 14px;
+  }
+
+  .nav-label {
+    display: inline;
+  }
+
+  .brand {
+    justify-content: center;
+  }
+
+  .brand-mark {
+    height: 120px;
+    margin-bottom: var(--space-2);
   }
 
   .phone-card-grid {
