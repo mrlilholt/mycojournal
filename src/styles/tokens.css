@@ -1,0 +1,45 @@
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", Inter,
+    "Helvetica Neue", Arial, sans-serif;
+
+  --bg-top: #f4f9ff;
+  --bg-mid: #eaf3ff;
+  --bg-bottom: #d6e6f6;
+  --bg-vignette: rgba(170, 190, 215, 0.55);
+
+  --phone-grad-start: #f6fbff;
+  --phone-grad-mid: #e8f2ff;
+  --phone-grad-end: #d7e6f6;
+
+  --glass-fill: rgba(255, 255, 255, 0.45);
+  --glass-highlight: linear-gradient(135deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0.38));
+  --glass-border: rgba(255, 255, 255, 0.6);
+
+  --text-primary: #1f2b3a;
+  --text-secondary: #6a7b90;
+  --text-tertiary: #94a3b8;
+
+  --accent-mint: #49efa7;
+  --accent-blue: #a8c7ff;
+  --accent-teal: #9de9f0;
+  --accent-soft: #dfeeff;
+
+  --shadow-soft: 0 30px 80px rgba(44, 74, 114, 0.18);
+  --shadow-card: 0 16px 40px rgba(43, 63, 93, 0.16);
+  --shadow-phone: 0 40px 90px rgba(58, 86, 120, 0.24);
+
+  --radius-xs: 12px;
+  --radius-sm: 18px;
+  --radius-md: 24px;
+  --radius-lg: 30px;
+  --radius-xl: 36px;
+  --radius-pill: 999px;
+
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 40px;
+  --space-6: 48px;
+  --space-7: 56px;
+}
