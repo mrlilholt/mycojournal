@@ -1,11 +1,18 @@
 import { useAuth } from '../../store/auth.jsx'
 
-export default function TopBar({ searchQuery, onSearchChange, onQuickLog }) {
+export default function TopBar({ searchQuery, onSearchChange, onQuickLog, onToggleNav }) {
   const { signOut } = useAuth()
 
   return (
     <header className="topbar">
       <div className="topbar-left">
+        <button className="mobile-nav-toggle" type="button" onClick={onToggleNav} aria-label="Open navigation">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M3 6h18" />
+            <path d="M3 12h18" />
+            <path d="M3 18h18" />
+          </svg>
+        </button>
         <input
           className="search-input"
           type="search"

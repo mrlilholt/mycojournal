@@ -215,11 +215,31 @@ a {
   z-index: 2;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
 .topbar-actions {
   display: flex;
   gap: var(--space-1);
   align-items: center;
   flex-wrap: wrap;
+}
+
+.mobile-nav-toggle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.65);
+  color: var(--text-secondary);
+  display: none;
+  place-items: center;
+  cursor: pointer;
+  backdrop-filter: blur(12px) saturate(140%);
+  box-shadow: 0 10px 20px rgba(70, 90, 120, 0.12);
 }
 
 .auth-gate {
@@ -298,9 +318,15 @@ a {
 
 .phone-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
   gap: var(--space-4);
   align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .phone-card-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .grow-card {
@@ -994,6 +1020,35 @@ a {
 @media (max-width: 720px) {
   .app-shell {
     padding: var(--space-3);
+    display: block;
+  }
+
+  .mobile-nav-toggle {
+    display: grid;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: min(260px, 80vw);
+    transform: translateX(-110%);
+    transition: transform 0.25s ease;
+    z-index: 20;
+    padding: var(--space-5) var(--space-4) var(--space-4);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 30, 45, 0.25);
+    backdrop-filter: blur(4px);
+    z-index: 15;
   }
 
   .phone-card-grid {

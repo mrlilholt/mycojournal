@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useId, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useStore } from '../../store/store.jsx'
 import './PhoneGrowCard.css'
 
@@ -44,8 +44,25 @@ const imageMap = {
   'King Trumpet (Pleurotus eryngii)': ['/kingTrumpet.png', '/kingOyster.png']
 }
 
+function useMediaQuery(query) {
+  const getMatch = () => (typeof window !== 'undefined' ? window.matchMedia(query).matches : false)
+  const [matches, setMatches] = useState(getMatch)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const media = window.matchMedia(query)
+    const handler = (event) => setMatches(event.matches)
+    media.addEventListener('change', handler)
+    return () => media.removeEventListener('change', handler)
+  }, [query])
+
+  return matches
+}
+
 export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
   const { actions } = useStore()
+  const isMobile = useMediaQuery('(max-width: 900px)')
+  const [expanded, setExpanded] = useState(!isMobile)
   const gradientId = useId()
   const ringGradientId = useId()
   const dottedId = useId()
@@ -127,8 +144,16 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
   const [imageIndex, setImageIndex] = useState(0)
   const imageSrc = imageCandidates[imageIndex]
 
+  useEffect(() => {
+    if (isMobile) {
+      setExpanded(false)
+    } else {
+      setExpanded(true)
+    }
+  }, [isMobile])
+
   return (
-    <div className="phone-grow-card">
+    <div className={`phone-grow-card ${isMobile && !expanded ? 'phone-grow-card--collapsed' : ''}`}>
       <div className="phone-grow-card__vignette" />
       <div className="phone-grow-card__nav">
         <div className="phone-grow-card__chevron">
@@ -149,7 +174,17 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
         </Link>
       </div>
 
-      <div className="phone-grow-card__body">
+      {isMobile ? (
+        <button
+          className="phone-grow-card__toggle"
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded ? 'Collapse' : 'Expand'}
+        </button>
+      ) : null}
+
+      <div className={`phone-grow-card__body ${isMobile && !expanded ? 'is-collapsed' : ''}`}>
         <div className="phone-grow-card__left">
           <div className="phone-grow-card__ring">
             <svg width="220" height="220" viewBox="0 0 220 220">

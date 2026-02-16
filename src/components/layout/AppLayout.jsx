@@ -10,6 +10,7 @@ export default function AppLayout() {
   const [searchQuery, setSearchQuery] = useState('')
   const [quickLogGrowId, setQuickLogGrowId] = useState('')
   const [quickLogOpen, setQuickLogOpen] = useState(false)
+  const [navOpen, setNavOpen] = useState(false)
 
   const openQuickLog = (growId = '') => {
     setQuickLogGrowId(growId)
@@ -23,12 +24,14 @@ export default function AppLayout() {
 
   return (
     <div className="app-shell">
-      <Sidebar />
+      <Sidebar isOpen={navOpen} onClose={() => setNavOpen(false)} />
+      {navOpen ? <div className="sidebar-backdrop" onClick={() => setNavOpen(false)} /> : null}
       <div className="app-main">
         <TopBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           onQuickLog={() => openQuickLog('')}
+          onToggleNav={() => setNavOpen((value) => !value)}
         />
         <div className="app-content">
           <Outlet context={{ searchQuery, openQuickLog }} />

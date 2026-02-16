@@ -46,9 +46,9 @@ const links = [
   }
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }) {
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'is-open' : ''}`}>
       <div className="brand">
         <div className="brand-mark">
           <img src="/myco.png" alt="MycoJournal" />
@@ -60,6 +60,7 @@ export default function Sidebar() {
             key={link.to}
             to={link.to}
             className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}
+            onClick={onClose}
           >
             <span className="nav-icon">{link.icon}</span>
             <span className="nav-label">{link.label}</span>
@@ -67,7 +68,7 @@ export default function Sidebar() {
         ))}
       </nav>
       <div className="sidebar-footer">
-        <NavLink to="/new-grow" className="primary-btn full">
+        <NavLink to="/new-grow" className="primary-btn full" onClick={onClose}>
           + New Grow
         </NavLink>
       </div>
