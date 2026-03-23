@@ -23,13 +23,29 @@ function ordinal(n) {
 }
 
 function getChartPoints(logs = [], growId) {
-  const series = logs
+  return logs
     .filter((log) => log.growId === growId && log.growthMmPerDay != null)
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
     .slice(-7)
-    .map((log) => Number(log.growthMmPerDay))
+    .map((log) => ({
+      value: Number(log.growthMmPerDay),
+      timestamp: log.timestamp
+    }))
+    .filter((item) => Number.isFinite(item.value))
+}
 
-  return series.filter((value) => Number.isFinite(value))
+function getStageLabels(phase) {
+  switch (phase) {
+    case 'Incubation':
+      return ['Colonizing', 'Ready to fruit']
+    case 'Pinning':
+      return ['Primordia', 'Pinset']
+    case 'Post-harvest':
+      return ['Flush complete', 'Reset']
+    case 'Fruiting':
+    default:
+      return ['Pinset', 'Harvest window']
+  }
 }
 
 const imageMap = {
@@ -75,7 +91,8 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
   const circumference = 2 * Math.PI * radius
   const offset = circumference * (1 - progress)
 
-  const points = getChartPoints(logs, grow.id)
+  const pointData = getChartPoints(logs, grow.id)
+  const points = pointData.map((item) => item.value)
   const hasPoints = points.length > 0
   const width = 280
   const height = 150
@@ -85,10 +102,12 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
   const range = max - min || 1
   const step = points.length > 1 ? (width - padding * 2) / (points.length - 1) : 0
   const coords = points.map((value, index) => {
-    const x = padding + index * step
+    const x = points.length > 1 ? padding + index * step : width / 2
     const y = height - padding - ((value - min) / range) * (height - padding * 2)
     return { x, y }
   })
+  const singlePointGuide =
+    points.length === 1 ? `M ${padding + 18} ${coords[0].y} L ${width - padding - 18} ${coords[0].y}` : ''
   const linePath =
     points.length > 1
       ? coords.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ')
@@ -98,6 +117,8 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
       ? `${linePath} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`
       : ''
   const badgePoint = coords[Math.floor(coords.length / 2)] || { x: padding, y: padding }
+  const latestGrowth = points.length ? points[points.length - 1] : null
+  const [stageStart, stageEnd] = getStageLabels(grow.phase)
 
   const [form, setForm] = useState({
     growthMmPerDay: '',
@@ -245,6 +266,15 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
 
           <div className="phone-grow-card__chart">
             <div className="phone-grow-card__chart-blob" />
+            <div className="phone-grow-card__chart-head">
+              <div>
+                <div className="phone-grow-card__chart-title">Radial Growth</div>
+                <div className="phone-grow-card__chart-subtitle">mm from block over time</div>
+              </div>
+              <div className="phone-grow-card__chart-value">
+                {latestGrowth != null ? `${latestGrowth.toFixed(1)} mm/day` : 'No logs'}
+              </div>
+            </div>
             <svg viewBox={`0 0 ${width} ${height}`} className="phone-grow-card__chart-svg">
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
@@ -252,18 +282,26 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
                   <stop offset="100%" stopColor="rgba(130, 200, 225, 0)" />
                 </linearGradient>
               </defs>
+              <path className="phone-grow-card__chart-baseline" d={`M ${padding} ${height - padding} L ${width - padding} ${height - padding}`} />
+              {singlePointGuide ? (
+                <path className="phone-grow-card__chart-guide" d={singlePointGuide} />
+              ) : null}
               {areaPath ? <path d={areaPath} fill={`url(#${gradientId})`} /> : null}
               {linePath ? <path d={linePath} stroke="#6f86a4" strokeWidth="2" fill="none" /> : null}
               {coords.map((point, index) => (
-                <circle
-                  key={`${point.x}-${index}`}
-                  cx={point.x}
-                  cy={point.y}
-                  r="4"
-                  fill="#ffffff"
-                  stroke="#6c7f99"
-                  strokeWidth="1.4"
-                />
+                <g key={`${point.x}-${index}`}>
+                  {points.length === 1 ? (
+                    <circle cx={point.x} cy={point.y} r="10" fill="rgba(94, 188, 203, 0.16)" />
+                  ) : null}
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r={points.length === 1 ? '5.5' : '4'}
+                    fill="#ffffff"
+                    stroke="#6c7f99"
+                    strokeWidth="1.4"
+                  />
+                </g>
               ))}
               {coords.length > 1 ? (
                 <g transform={`translate(${badgePoint.x - 12}, ${badgePoint.y - 28})`}>
@@ -280,11 +318,11 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
               ) : null}
             </svg>
             {!hasPoints ? (
-              <div className="phone-grow-card__chart-empty">Add growth logs to see trend</div>
+              <div className="phone-grow-card__chart-empty">Add `mm from block` logs to see the flush develop</div>
             ) : null}
             <div className="phone-grow-card__chart-labels">
-              <span>Vegetative</span>
-              <span>Pre-flowering</span>
+              <span>{stageStart}</span>
+              <span>{stageEnd}</span>
             </div>
           </div>
         </div>

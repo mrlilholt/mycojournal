@@ -99,9 +99,10 @@ export default function LogFormModal({ open, onClose, growId, growOptions }) {
           <input
             type="datetime-local"
             value={form.timestamp}
-            onChange={(event) => setForm({ ...form, timestamp: event.target.value })}
+            readOnly
             required
           />
+          <span className="helper-text">Captured automatically when the log is opened.</span>
         </label>
         <label>
           Temp (°{unitLabel})
