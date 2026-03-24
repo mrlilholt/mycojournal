@@ -1,6 +1,9 @@
 import { Link } from 'react-router-dom'
 import { useEffect, useId, useState } from 'react'
 import { useStore } from '../../store/store.jsx'
+import { useAuth } from '../../store/auth.jsx'
+import { uploadEntryPhotos } from '../../utils/photos.js'
+import { uid } from '../../utils/id.js'
 import './PhoneGrowCard.css'
 
 function weeksSinceStart(startDate) {
@@ -29,7 +32,8 @@ function getChartPoints(logs = [], growId) {
     .slice(-7)
     .map((log) => ({
       value: Number(log.growthMmPerDay),
-      timestamp: log.timestamp
+      timestamp: log.timestamp,
+      photos: Array.isArray(log.photos) ? log.photos : []
     }))
     .filter((item) => Number.isFinite(item.value))
 }
@@ -77,6 +81,7 @@ function useMediaQuery(query) {
 
 export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
   const { actions } = useStore()
+  const { user } = useAuth()
   const isMobile = useMediaQuery('(max-width: 900px)')
   const [expanded, setExpanded] = useState(!isMobile)
   const gradientId = useId()
@@ -116,9 +121,11 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
     points.length > 1
       ? `${linePath} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`
       : ''
-  const badgePoint = coords[Math.floor(coords.length / 2)] || { x: padding, y: padding }
   const latestGrowth = points.length ? points[points.length - 1] : null
   const [stageStart, stageEnd] = getStageLabels(grow.phase)
+  const latestGrowLog = logs
+    .filter((log) => log.growId === grow.id)
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
 
   const [form, setForm] = useState({
     growthMmPerDay: '',
@@ -127,25 +134,106 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
     co2: '',
     notes: ''
   })
+  const [photoFile, setPhotoFile] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+  const [activePointIndex, setActivePointIndex] = useState(null)
+  const [lightboxIndex, setLightboxIndex] = useState(-1)
+  const [lightboxZoomed, setLightboxZoomed] = useState(false)
+  const chartPhotoPoints = pointData
+    .map((item, index) => ({
+      ...item,
+      point: coords[index],
+      photo: item.photos?.[0] || null,
+      index
+    }))
+    .filter((item) => item.photo && item.point)
+  const defaultPointIndex = chartPhotoPoints.length
+    ? chartPhotoPoints[chartPhotoPoints.length - 1].index
+    : pointData.length
+      ? pointData.length - 1
+      : null
+  const activePoint = activePointIndex != null ? pointData[activePointIndex] : pointData[defaultPointIndex] || null
+  const activeChartLabel = activePoint
+    ? `${activePoint.value.toFixed(1)} mm/day`
+    : latestGrowth != null
+      ? `${latestGrowth.toFixed(1)} mm/day`
+      : 'No logs'
+  const activeChartDate = activePoint?.timestamp ? new Date(activePoint.timestamp).toLocaleDateString() : ''
+  const activePhotoPoint = chartPhotoPoints.find((item) => item.index === activePointIndex) || null
 
-  const handleSubmit = (event) => {
+  useEffect(() => {
+    if (!pointData.length) {
+      setActivePointIndex(null)
+      return
+    }
+    if (activePointIndex == null || activePointIndex >= pointData.length) {
+      setActivePointIndex(defaultPointIndex)
+    }
+  }, [pointData, activePointIndex, defaultPointIndex])
+
+  useEffect(() => {
+    if (!photoFile) {
+      setPhotoPreview('')
+      return
+    }
+    const objectUrl = URL.createObjectURL(photoFile)
+    setPhotoPreview(objectUrl)
+    return () => URL.revokeObjectURL(objectUrl)
+  }, [photoFile])
+
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    actions.addLog({
-      growId: grow.id,
-      timestamp: new Date().toISOString(),
-      growthMmPerDay: form.growthMmPerDay === '' ? null : Number(form.growthMmPerDay),
-      temp: form.temp === '' ? null : Number(form.temp),
-      humidity: form.humidity === '' ? null : Number(form.humidity),
-      co2: form.co2 === '' ? null : Number(form.co2),
-      notes: form.notes
-    })
-    setForm({
-      growthMmPerDay: '',
-      temp: '',
-      humidity: '',
-      co2: '',
-      notes: ''
-    })
+    setIsSubmitting(true)
+    setSubmitError('')
+    const fallbackTemp =
+      grow.targets?.tempMin != null && grow.targets?.tempMax != null
+        ? Math.round(((grow.targets.tempMin + grow.targets.tempMax) / 2) * 10) / 10
+        : latestGrowLog?.temp ?? null
+    const fallbackHumidity =
+      grow.targets?.humidityMin != null && grow.targets?.humidityMax != null
+        ? Math.round((grow.targets.humidityMin + grow.targets.humidityMax) / 2)
+        : latestGrowLog?.humidity ?? null
+    const fallbackCo2 = grow.targets?.co2Max ?? latestGrowLog?.co2 ?? null
+    try {
+      const entryId = uid('log')
+      const photos =
+        user && photoFile
+          ? await uploadEntryPhotos({
+              userId: user.uid,
+              entryType: 'logs',
+              entryId,
+              files: [photoFile]
+            })
+          : []
+      await actions.addLog({
+        id: entryId,
+        growId: grow.id,
+        timestamp: new Date().toISOString(),
+        growthMmPerDay: form.growthMmPerDay === '' ? null : Number(form.growthMmPerDay),
+        temp: form.temp === '' ? fallbackTemp : Number(form.temp),
+        humidity: form.humidity === '' ? fallbackHumidity : Number(form.humidity),
+        co2: form.co2 === '' ? fallbackCo2 : Number(form.co2),
+        block: latestGrowLog?.block ?? null,
+        treatment: latestGrowLog?.treatment ?? null,
+        notes: form.notes,
+        photos
+      })
+      setForm({
+        growthMmPerDay: '',
+        temp: '',
+        humidity: '',
+        co2: '',
+        notes: ''
+      })
+      setPhotoFile(null)
+    } catch (error) {
+      console.error(error)
+      setSubmitError('Photo upload failed. Try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const match = grow.species ? grow.species.match(/\(([^)]+)\)/) : null
@@ -264,15 +352,34 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
             </button>
           </div>
 
-          <div className="phone-grow-card__chart">
+          <div
+            className="phone-grow-card__chart"
+            onMouseLeave={() => setActivePointIndex(defaultPointIndex)}
+          >
             <div className="phone-grow-card__chart-blob" />
             <div className="phone-grow-card__chart-head">
               <div>
                 <div className="phone-grow-card__chart-title">Radial Growth</div>
                 <div className="phone-grow-card__chart-subtitle">mm from block over time</div>
               </div>
-              <div className="phone-grow-card__chart-value">
-                {latestGrowth != null ? `${latestGrowth.toFixed(1)} mm/day` : 'No logs'}
+              <div className="phone-grow-card__chart-side">
+                <div className="phone-grow-card__chart-value">
+                  {activeChartLabel}
+                  {activeChartDate ? <span className="phone-grow-card__chart-date">{activeChartDate}</span> : null}
+                </div>
+                {activePhotoPoint ? (
+                  <button
+                    className="phone-grow-card__chart-preview"
+                    type="button"
+                    onClick={() => {
+                      setLightboxIndex(chartPhotoPoints.findIndex((entry) => entry.index === activePhotoPoint.index))
+                      setLightboxZoomed(false)
+                    }}
+                    aria-label={`Open photo from ${new Date(activePhotoPoint.timestamp).toLocaleString()}`}
+                  >
+                    <img src={activePhotoPoint.photo.url} alt="Growth log preview" />
+                  </button>
+                ) : null}
               </div>
             </div>
             <svg viewBox={`0 0 ${width} ${height}`} className="phone-grow-card__chart-svg">
@@ -300,22 +407,10 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
                     fill="#ffffff"
                     stroke="#6c7f99"
                     strokeWidth="1.4"
+                    onMouseEnter={() => setActivePointIndex(index)}
                   />
                 </g>
               ))}
-              {coords.length > 1 ? (
-                <g transform={`translate(${badgePoint.x - 12}, ${badgePoint.y - 28})`}>
-                  <rect width="24" height="24" rx="8" fill="rgba(255,255,255,0.9)" />
-                  <path
-                    d="M7 11h10v6H7z"
-                    fill="none"
-                    stroke="#6c7f99"
-                    strokeWidth="1.4"
-                  />
-                  <circle cx="12" cy="14" r="2" fill="none" stroke="#6c7f99" strokeWidth="1.2" />
-                  <path d="M9 9h6" stroke="#6c7f99" strokeWidth="1.4" />
-                </g>
-              ) : null}
             </svg>
             {!hasPoints ? (
               <div className="phone-grow-card__chart-empty">Add `mm from block` logs to see the flush develop</div>
@@ -355,7 +450,11 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
                 step="0.1"
                 value={form.temp}
                 onChange={(event) => setForm({ ...form, temp: event.target.value })}
-                placeholder="70"
+                placeholder={
+                  grow.targets?.tempMin != null && grow.targets?.tempMax != null
+                    ? `${Math.round(((grow.targets.tempMin + grow.targets.tempMax) / 2) * 10) / 10}`
+                    : '70'
+                }
               />
             </label>
             <label>
@@ -365,7 +464,11 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
                 step="1"
                 value={form.humidity}
                 onChange={(event) => setForm({ ...form, humidity: event.target.value })}
-                placeholder="90"
+                placeholder={
+                  grow.targets?.humidityMin != null && grow.targets?.humidityMax != null
+                    ? `${Math.round((grow.targets.humidityMin + grow.targets.humidityMax) / 2)}`
+                    : '90'
+                }
               />
             </label>
             <label>
@@ -375,7 +478,7 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
                 step="1"
                 value={form.co2}
                 onChange={(event) => setForm({ ...form, co2: event.target.value })}
-                placeholder="900"
+                placeholder={grow.targets?.co2Max != null ? `${grow.targets.co2Max}` : '900'}
               />
             </label>
             <label className="full">
@@ -387,8 +490,30 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
                 placeholder="Observations..."
               />
             </label>
-            <button className="phone-grow-card__submit" type="submit">
-              Quick Log
+            <label className="full">
+              Photo
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+              />
+            </label>
+            {photoPreview ? (
+              <div className="phone-grow-card__photo-preview">
+                <img src={photoPreview} alt="Quick log preview" />
+                <button
+                  className="phone-grow-card__photo-remove"
+                  type="button"
+                  onClick={() => setPhotoFile(null)}
+                >
+                  Remove
+                </button>
+              </div>
+            ) : null}
+            {submitError ? <div className="phone-grow-card__form-error">{submitError}</div> : null}
+            <button className="phone-grow-card__submit" type="submit" disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Quick Log'}
             </button>
           </form>
           {grow.status !== 'complete' ? (
@@ -410,6 +535,80 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
           )}
         </div>
       </div>
+
+      {lightboxIndex >= 0 && chartPhotoPoints[lightboxIndex] ? (
+        <div
+          className="phone-grow-card__lightbox"
+          role="dialog"
+          aria-modal="true"
+          onClick={() => {
+            setLightboxIndex(-1)
+            setLightboxZoomed(false)
+          }}
+        >
+          <button
+            className="phone-grow-card__lightbox-close"
+            type="button"
+            onClick={() => {
+              setLightboxIndex(-1)
+              setLightboxZoomed(false)
+            }}
+          >
+            Close
+          </button>
+          {chartPhotoPoints.length > 1 ? (
+            <>
+              <button
+                className="phone-grow-card__lightbox-nav phone-grow-card__lightbox-nav--prev"
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setLightboxIndex((current) => (current <= 0 ? chartPhotoPoints.length - 1 : current - 1))
+                  setLightboxZoomed(false)
+                }}
+              >
+                Prev
+              </button>
+              <button
+                className="phone-grow-card__lightbox-nav phone-grow-card__lightbox-nav--next"
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setLightboxIndex((current) =>
+                    current >= chartPhotoPoints.length - 1 ? 0 : current + 1
+                  )
+                  setLightboxZoomed(false)
+                }}
+              >
+                Next
+              </button>
+            </>
+          ) : null}
+          <button
+            className="phone-grow-card__lightbox-zoom"
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation()
+              setLightboxZoomed((current) => !current)
+            }}
+          >
+            {lightboxZoomed ? 'Fit' : 'Zoom'}
+          </button>
+          <div className="phone-grow-card__lightbox-card" onClick={(event) => event.stopPropagation()}>
+            <div className={`phone-grow-card__lightbox-image-wrap ${lightboxZoomed ? 'is-zoomed' : ''}`}>
+              <img
+                src={chartPhotoPoints[lightboxIndex].photo.url}
+                alt="Growth log full size"
+                onClick={() => setLightboxZoomed((current) => !current)}
+              />
+            </div>
+            <div className="phone-grow-card__lightbox-meta">
+              {new Date(chartPhotoPoints[lightboxIndex].timestamp).toLocaleString()} ·{' '}
+              {chartPhotoPoints[lightboxIndex].value.toFixed(1)} mm/day
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

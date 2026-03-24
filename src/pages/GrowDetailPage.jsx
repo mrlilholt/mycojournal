@@ -17,6 +17,43 @@ import { getEventsForGrow, getHarvestsForGrow, getLogsForGrow, getTimelineItems 
 
 const tabs = ['timeline', 'environment', 'harvests', 'notes']
 
+function midpoint(min, max) {
+  if (min == null || max == null) return null
+  return (Number(min) + Number(max)) / 2
+}
+
+function getTimelineHighlights(item, units) {
+  if (item.type === 'log') {
+    return [
+      item.payload.temp != null ? `Temp ${formatTemp(item.payload.temp, units)}` : null,
+      item.payload.humidity != null ? `RH ${item.payload.humidity}%` : null,
+      item.payload.co2 != null ? `CO2 ${item.payload.co2} ppm` : null,
+      item.payload.growthMmPerDay != null ? `Growth ${item.payload.growthMmPerDay} mm/day` : null,
+      item.payload.flushHeightMm != null ? `Flush ${item.payload.flushHeightMm} mm` : null,
+      item.payload.block ? `Block ${item.payload.block}` : null,
+      item.payload.treatment ? `Treatment ${item.payload.treatment}` : null
+    ].filter(Boolean)
+  }
+
+  if (item.type === 'event') {
+    return [
+      item.payload.type ? `Event ${item.payload.type}` : null,
+      item.payload.severity ? `Severity ${item.payload.severity}` : null
+    ].filter(Boolean)
+  }
+
+  if (item.type === 'harvest') {
+    return [
+      item.payload.flushNumber != null ? `Flush ${item.payload.flushNumber}` : null,
+      item.payload.weight != null ? `${item.payload.weight} lbs` : null,
+      item.payload.quality ? `Quality ${item.payload.quality}` : null,
+      item.payload.photos?.length ? `${item.payload.photos.length} photo${item.payload.photos.length > 1 ? 's' : ''}` : null
+    ].filter(Boolean)
+  }
+
+  return []
+}
+
 export default function GrowDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
@@ -25,7 +62,10 @@ export default function GrowDetailPage() {
   const [logOpen, setLogOpen] = useState(false)
   const [eventOpen, setEventOpen] = useState(false)
   const [harvestOpen, setHarvestOpen] = useState(false)
+  const [editingLog, setEditingLog] = useState(null)
+  const [editingHarvest, setEditingHarvest] = useState(null)
   const [notes, setNotes] = useState('')
+  const [activeTimelineId, setActiveTimelineId] = useState('')
 
   const grow = state.grows.find((item) => item.id === id)
 
@@ -53,6 +93,10 @@ export default function GrowDetailPage() {
 
   const sortedLogs = useMemo(
     () => logs.slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp)),
+    [logs]
+  )
+  const reverseSortedLogs = useMemo(
+    () => logs.slice().sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)),
     [logs]
   )
 
@@ -95,9 +139,32 @@ export default function GrowDetailPage() {
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
   }, [logs])
 
+  const targetTemp = useMemo(
+    () => midpoint(grow?.targets?.tempMin, grow?.targets?.tempMax),
+    [grow?.targets?.tempMin, grow?.targets?.tempMax]
+  )
+  const targetHumidity = useMemo(
+    () => midpoint(grow?.targets?.humidityMin, grow?.targets?.humidityMax),
+    [grow?.targets?.humidityMin, grow?.targets?.humidityMax]
+  )
+  const targetCo2 = grow?.targets?.co2Max ?? null
+
+  const tempDisplay = latestLog?.temp ?? targetTemp
+  const humidityDisplay = latestLog?.humidity ?? targetHumidity
+  const co2Display = latestLog?.co2 ?? targetCo2
+  const blockDisplay = latestLog?.block ?? '—'
+  const treatmentDisplay = latestLog?.treatment ?? '—'
+
   useEffect(() => {
     if (grow) setNotes(grow.notes || '')
   }, [grow])
+
+  useEffect(() => {
+    setActiveTimelineId((current) => {
+      if (timeline.some((item) => item.id === current)) return current
+      return timeline[0]?.id || ''
+    })
+  }, [timeline])
 
   if (!grow) {
     return (
@@ -167,11 +234,6 @@ export default function GrowDetailPage() {
       render: (row) => (row.co2 != null ? `${row.co2} ppm` : '—')
     },
     {
-      key: 'surface',
-      label: 'Surface',
-      render: (row) => row.surfaceCondition ?? '—'
-    },
-    {
       key: 'growth',
       label: 'Growth (mm/day)',
       render: (row) => (row.growthMmPerDay != null ? row.growthMmPerDay : '—')
@@ -180,6 +242,15 @@ export default function GrowDetailPage() {
       key: 'flushHeight',
       label: 'Flush Height (mm)',
       render: (row) => (row.flushHeightMm != null ? row.flushHeightMm : '—')
+    },
+    {
+      key: 'actions',
+      label: '',
+      render: (row) => (
+        <button className="ghost-btn table-action-btn" type="button" onClick={() => setEditingLog(row)}>
+          Edit
+        </button>
+      )
     }
   ]
 
@@ -258,16 +329,35 @@ export default function GrowDetailPage() {
         <div className="timeline">
           {timeline.length ? (
             timeline.map((item) => (
-              <div key={item.id} className="timeline-item">
-                <div className="timeline-meta">
-                  <span className="badge">{item.type}</span>
-                  <span>{formatDateTime(item.timestamp)}</span>
+              <div
+                key={item.id}
+                className={`timeline-item ${activeTimelineId === item.id ? 'is-active' : ''}`}
+                onMouseEnter={() => setActiveTimelineId(item.id)}
+                onFocus={() => setActiveTimelineId(item.id)}
+              >
+                <div className="timeline-rail">
+                  <div className={`timeline-node timeline-node--${item.type}`} />
                 </div>
-                <div className="timeline-body">
+                <button
+                  className="timeline-card"
+                  type="button"
+                  onClick={() => setActiveTimelineId((current) => (current === item.id ? '' : item.id))}
+                >
+                  <div className="timeline-meta">
+                    <span className="badge">{item.type}</span>
+                    <span>{formatDateTime(item.timestamp)}</span>
+                  </div>
+                  <div className="timeline-highlights">
+                    {getTimelineHighlights(item, state.settings.units).map((highlight) => (
+                      <span key={highlight} className="timeline-pill">
+                        {highlight}
+                      </span>
+                    ))}
+                  </div>
                   {item.type === 'log' ? (
-                    <div>
+                    <div className="timeline-body">
                       <strong>
-                        {formatTemp(item.payload.temp, state.settings.units)} ·{' '}
+                        {item.payload.temp != null ? formatTemp(item.payload.temp, state.settings.units) : '—'} ·{' '}
                         {item.payload.humidity != null ? `${item.payload.humidity}%` : '—'} ·{' '}
                         {item.payload.co2 ?? '—'} ppm
                       </strong>
@@ -287,23 +377,37 @@ export default function GrowDetailPage() {
                         </div>
                       )}
                       <div className="muted">{item.payload.notes || 'No notes'}</div>
+                      {item.payload.photos?.length ? (
+                        <div className="timeline-photo-strip">
+                          {item.payload.photos.map((photo) => (
+                            <img key={photo.id || photo.url} src={photo.url} alt="Log entry" />
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                   {item.type === 'event' ? (
-                    <div>
+                    <div className="timeline-body">
                       <strong>{item.payload.type}</strong>
                       <div className="muted">{item.payload.notes || 'No notes'}</div>
                     </div>
                   ) : null}
                   {item.type === 'harvest' ? (
-                    <div>
+                    <div className="timeline-body">
                       <strong>
                         Flush {item.payload.flushNumber} · {item.payload.weight ?? '—'} lbs
                       </strong>
                       <div className="muted">{item.payload.notes || 'No notes'}</div>
+                      {item.payload.photos?.length ? (
+                        <div className="timeline-photo-strip">
+                          {item.payload.photos.map((photo) => (
+                            <img key={photo.id || photo.url} src={photo.url} alt="Harvest entry" />
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
-                </div>
+                </button>
               </div>
             ))
           ) : (
@@ -322,39 +426,54 @@ export default function GrowDetailPage() {
               <div className="metric-header">
                 <span className="label">Temperature</span>
                 <span className="metric-sub">
-                  Latest {latestLog?.temp != null ? formatTemp(latestLog.temp, state.settings.units) : '—'}
+                  {latestLog?.temp != null ? 'Latest' : targetTemp != null ? 'Target midpoint' : 'Latest'}{' '}
+                  {tempDisplay != null ? formatTemp(tempDisplay, state.settings.units) : '—'}
                 </span>
               </div>
               <div className="metric-value">
-                {avgTemp != null ? formatTemp(avgTemp, state.settings.units) : '—'}
+                {avgTemp != null
+                  ? formatTemp(avgTemp, state.settings.units)
+                  : tempDisplay != null
+                    ? formatTemp(tempDisplay, state.settings.units)
+                    : '—'}
               </div>
-              <span className="metric-caption">Average</span>
+              <span className="metric-caption">{avgTemp != null ? 'Average' : 'Current display'}</span>
               <Sparkline points={tempPoints} stroke="#4a73c5" height={64} />
             </div>
             <div className="metric-card">
               <div className="metric-header">
                 <span className="label">Humidity</span>
                 <span className="metric-sub">
-                  Latest {latestLog?.humidity != null ? `${latestLog.humidity}%` : '—'}
+                  {latestLog?.humidity != null ? 'Latest' : targetHumidity != null ? 'Target midpoint' : 'Latest'}{' '}
+                  {humidityDisplay != null ? `${Math.round(humidityDisplay)}%` : '—'}
                 </span>
               </div>
               <div className="metric-value">
-                {avgHumidity != null ? `${Math.round(avgHumidity)}%` : '—'}
+                {avgHumidity != null
+                  ? `${Math.round(avgHumidity)}%`
+                  : humidityDisplay != null
+                    ? `${Math.round(humidityDisplay)}%`
+                    : '—'}
               </div>
-              <span className="metric-caption">Average</span>
+              <span className="metric-caption">{avgHumidity != null ? 'Average' : 'Current display'}</span>
               <Sparkline points={humidityPoints} stroke="#5aa0c9" height={64} />
             </div>
             <div className="metric-card">
               <div className="metric-header">
                 <span className="label">CO2</span>
                 <span className="metric-sub">
-                  Latest {latestLog?.co2 != null ? `${latestLog.co2} ppm` : '—'}
+                  {latestLog?.co2 != null ? 'Latest' : targetCo2 != null ? 'Target max' : 'Latest'}{' '}
+                  {co2Display != null ? `${Math.round(co2Display)} ppm` : '—'}
                 </span>
               </div>
               <div className="metric-value">
-                {co2Points.length ? `${Math.round(co2Points[co2Points.length - 1])} ppm` : '—'}
+                {co2Points.length
+                  ? `${Math.round(co2Points[co2Points.length - 1])} ppm`
+                  : co2Display != null
+                    ? `${Math.round(co2Display)} ppm`
+                    : '—'}
               </div>
-              <span className="metric-caption">Last reading</span>
+              <span className="metric-caption">{co2Points.length ? 'Last reading' : 'Current display'}</span>
               <Sparkline points={co2Points} stroke="#7a6bc8" height={64} />
             </div>
             <div className="metric-card">
@@ -369,6 +488,22 @@ export default function GrowDetailPage() {
               </div>
               <span className="metric-caption">Last reading</span>
               <Sparkline points={growthPoints} stroke="#4a8aa6" height={64} />
+            </div>
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="label">Block</span>
+                <span className="metric-sub">Latest log</span>
+              </div>
+              <div className="metric-value metric-value--text">{blockDisplay}</div>
+              <span className="metric-caption">Copied forward on quick log</span>
+            </div>
+            <div className="metric-card">
+              <div className="metric-header">
+                <span className="label">Treatment</span>
+                <span className="metric-sub">Latest log</span>
+              </div>
+              <div className="metric-value metric-value--text">{treatmentDisplay}</div>
+              <span className="metric-caption">Copied forward on quick log</span>
             </div>
           </div>
           <div className="panel">
@@ -411,7 +546,7 @@ export default function GrowDetailPage() {
               <Sparkline points={flushPoints} stroke="#6c8ea4" />
             </div>
           </div>
-          <DataTable columns={columns} rows={logs} />
+          <DataTable columns={columns} rows={reverseSortedLogs} />
         </div>
       )}
 
@@ -430,6 +565,20 @@ export default function GrowDetailPage() {
                     <p className="muted">Quality {harvest.quality ?? '—'}</p>
                   </div>
                   <p className="muted">{harvest.notes || 'No notes'}</p>
+                  {harvest.photos?.length ? (
+                    <div className="timeline-photo-strip">
+                      {harvest.photos.map((photo) => (
+                        <img key={photo.id || photo.url} src={photo.url} alt="Harvest" />
+                      ))}
+                    </div>
+                  ) : null}
+                  <button
+                    className="ghost-btn table-action-btn"
+                    type="button"
+                    onClick={() => setEditingHarvest(harvest)}
+                  >
+                    Edit Harvest
+                  </button>
                 </div>
               ))}
             </div>
@@ -457,16 +606,24 @@ export default function GrowDetailPage() {
       )}
 
       <LogFormModal
-        open={logOpen}
-        onClose={() => setLogOpen(false)}
+        open={logOpen || Boolean(editingLog)}
+        onClose={() => {
+          setLogOpen(false)
+          setEditingLog(null)
+        }}
         growId={grow.id}
         growOptions={state.grows}
+        initialLog={editingLog}
       />
       <EventFormModal open={eventOpen} onClose={() => setEventOpen(false)} growId={grow.id} />
       <HarvestFormModal
-        open={harvestOpen}
-        onClose={() => setHarvestOpen(false)}
+        open={harvestOpen || Boolean(editingHarvest)}
+        onClose={() => {
+          setHarvestOpen(false)
+          setEditingHarvest(null)
+        }}
         growId={grow.id}
+        initialHarvest={editingHarvest}
       />
     </div>
   )

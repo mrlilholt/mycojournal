@@ -127,12 +127,19 @@ function reducer(state, action) {
       const now = new Date().toISOString()
       const newLog = {
         ...action.payload,
-        id: uid('log'),
+        id: action.payload.id || uid('log'),
         createdAt: now
       }
       return {
         ...state,
         logs: [newLog, ...state.logs]
+      }
+    }
+    case 'UPDATE_LOG': {
+      const { id, updates } = action.payload
+      return {
+        ...state,
+        logs: state.logs.map((log) => (log.id === id ? { ...log, ...updates } : log))
       }
     }
     case 'ADD_EVENT': {
@@ -148,11 +155,20 @@ function reducer(state, action) {
     case 'ADD_HARVEST': {
       const newHarvest = {
         ...action.payload,
-        id: uid('harvest')
+        id: action.payload.id || uid('harvest')
       }
       return {
         ...state,
         harvests: [newHarvest, ...state.harvests]
+      }
+    }
+    case 'UPDATE_HARVEST': {
+      const { id, updates } = action.payload
+      return {
+        ...state,
+        harvests: state.harvests.map((harvest) =>
+          harvest.id === id ? { ...harvest, ...updates } : harvest
+        )
       }
     }
     case 'UPDATE_SETTINGS': {
@@ -410,17 +426,25 @@ export function StoreProvider({ children }) {
         })
       },
       addLog: async (payload) => {
+        const id = payload.id || uid('log')
         if (!user) {
-          dispatch({ type: 'ADD_LOG', payload })
-          return
+          dispatch({ type: 'ADD_LOG', payload: { ...payload, id } })
+          return id
         }
         const now = new Date().toISOString()
-        const id = uid('log')
         await setDoc(doc(db, 'users', user.uid, 'logs', id), {
           ...payload,
           id,
           createdAt: now
         })
+        return id
+      },
+      updateLog: async (id, updates) => {
+        if (!user) {
+          dispatch({ type: 'UPDATE_LOG', payload: { id, updates } })
+          return
+        }
+        await updateDoc(doc(db, 'users', user.uid, 'logs', id), updates)
       },
       addEvent: async (payload) => {
         if (!user) {
@@ -431,12 +455,20 @@ export function StoreProvider({ children }) {
         await setDoc(doc(db, 'users', user.uid, 'events', id), { ...payload, id })
       },
       addHarvest: async (payload) => {
+        const id = payload.id || uid('harvest')
         if (!user) {
-          dispatch({ type: 'ADD_HARVEST', payload })
+          dispatch({ type: 'ADD_HARVEST', payload: { ...payload, id } })
+          return id
+        }
+        await setDoc(doc(db, 'users', user.uid, 'harvests', id), { ...payload, id })
+        return id
+      },
+      updateHarvest: async (id, updates) => {
+        if (!user) {
+          dispatch({ type: 'UPDATE_HARVEST', payload: { id, updates } })
           return
         }
-        const id = uid('harvest')
-        await setDoc(doc(db, 'users', user.uid, 'harvests', id), { ...payload, id })
+        await updateDoc(doc(db, 'users', user.uid, 'harvests', id), updates)
       },
       updateSettings: async (payload) => {
         if (!user) {

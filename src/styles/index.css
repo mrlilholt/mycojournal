@@ -208,16 +208,15 @@ a {
   padding: var(--space-2) var(--space-3);
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: var(--space-3);
-  align-items: stretch;
+  gap: var(--space-2);
+  align-items: center;
   position: sticky;
   top: var(--space-4);
   z-index: 2;
 }
 
 .topbar-logo {
-  height: 100%;
-  max-height: 120px;
+  height: 72px;
   width: auto;
   display: block;
   align-self: center;
@@ -225,20 +224,23 @@ a {
 
 .topbar-content {
   display: grid;
-  grid-template-rows: auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--space-2);
+  align-items: center;
 }
 
 .topbar-search {
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .topbar-actions {
   display: flex;
   gap: var(--space-1);
   align-items: center;
-  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
 }
 
 .mobile-nav-toggle {
@@ -340,6 +342,15 @@ a {
   .phone-card-grid {
     grid-template-columns: 1fr;
   }
+
+  .timeline-item {
+    grid-template-columns: 20px 1fr;
+    gap: 12px;
+  }
+
+  .timeline-card {
+    padding: 14px;
+  }
 }
 
 .grow-card {
@@ -432,6 +443,12 @@ a {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.6);
   color: var(--text-secondary);
+}
+
+.table-action-btn {
+  padding: 6px 12px;
+  font-size: 12px;
+  box-shadow: none;
 }
 
 .primary-btn.full {
@@ -537,12 +554,14 @@ a {
 .timeline {
   display: grid;
   gap: var(--space-2);
+  position: relative;
 }
 
 .timeline-item {
-  padding: var(--space-2);
   display: grid;
-  gap: var(--space-1);
+  grid-template-columns: 28px 1fr;
+  gap: var(--space-2);
+  align-items: start;
 }
 
 .timeline-meta {
@@ -551,6 +570,106 @@ a {
   align-items: center;
   font-size: 12px;
   color: var(--text-tertiary);
+}
+
+.timeline-rail {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.timeline-rail::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: -16px;
+  width: 2px;
+  background: linear-gradient(180deg, rgba(130, 154, 189, 0.55), rgba(170, 190, 215, 0.18));
+}
+
+.timeline-item:last-child .timeline-rail::before {
+  bottom: 24px;
+}
+
+.timeline-node {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 2px solid rgba(107, 129, 158, 0.8);
+  margin-top: 22px;
+  z-index: 1;
+  box-shadow: 0 10px 18px rgba(70, 90, 120, 0.12);
+}
+
+.timeline-node--log {
+  border-color: #4a8aa6;
+}
+
+.timeline-node--event {
+  border-color: #7a6bc8;
+}
+
+.timeline-node--harvest {
+  border-color: #49efa7;
+}
+
+.timeline-card {
+  width: 100%;
+  text-align: left;
+  padding: var(--space-2);
+  display: grid;
+  gap: var(--space-1);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  font: inherit;
+  background: rgba(255, 255, 255, 0.48);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: var(--shadow-card);
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+}
+
+.timeline-item.is-active .timeline-card,
+.timeline-card:hover,
+.timeline-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 22px 44px rgba(74, 102, 140, 0.16);
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.timeline-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.timeline-pill {
+  padding: 5px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1;
+}
+
+.timeline-body {
+  display: grid;
+  gap: 6px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: max-height 0.22s ease, opacity 0.22s ease, padding-top 0.22s ease;
+}
+
+.timeline-item.is-active .timeline-body,
+.timeline-card:hover .timeline-body,
+.timeline-card:focus-visible .timeline-body {
+  max-height: 360px;
+  opacity: 1;
+  padding-top: 4px;
 }
 
 .badge {
@@ -606,6 +725,12 @@ a {
   font-size: 28px;
   font-weight: 600;
   letter-spacing: -0.3px;
+}
+
+.metric-value--text {
+  font-size: 22px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .metric-sub {
@@ -689,7 +814,8 @@ a {
 }
 
 .table-wrapper {
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: hidden;
 }
 
 .table-wrapper table {
@@ -709,6 +835,13 @@ a {
   background: rgba(255, 255, 255, 0.7);
   color: var(--text-secondary);
   font-weight: 500;
+}
+
+.table-action-btn {
+  padding: 8px 12px;
+  font-size: 12px;
+  white-space: nowrap;
+  min-width: 72px;
 }
 
 .empty-cell {
@@ -780,6 +913,37 @@ a {
 .helper-text {
   font-size: 12px;
   color: var(--text-tertiary);
+}
+
+.timeline-photo-strip,
+.photo-preview-grid {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.timeline-photo-strip img,
+.photo-preview-card img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 10px 18px rgba(70, 90, 120, 0.12);
+}
+
+.photo-preview-card {
+  display: grid;
+  gap: 8px;
+}
+
+.photo-preview-remove {
+  justify-self: start;
+}
+
+.form-error {
+  color: #a53c4f;
+  font-size: 12px;
 }
 
 .form-actions {
@@ -1110,14 +1274,22 @@ a {
 
   .topbar-logo {
     justify-self: start;
-    height: 100%;
-    max-height: 64px;
+    height: 52px;
+  }
+
+  .topbar-content {
+    grid-template-columns: 1fr;
   }
 
   .search-input {
     width: 100%;
     padding: 10px 14px;
     font-size: 13px;
+  }
+
+  .topbar-actions {
+    justify-content: flex-start;
+    flex-wrap: wrap;
   }
 
   .topbar-actions .secondary-btn,
