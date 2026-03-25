@@ -4,6 +4,7 @@ import PhoneGrowCard from '../components/grows/PhoneGrowCard.jsx'
 import FiltersBar from '../components/grows/FiltersBar.jsx'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import { useStore } from '../store/store.jsx'
+import { fuzzyMatchesGrow } from '../utils/search.js'
 
 const phaseOptions = ['Incubation', 'Pinning', 'Fruiting', 'Post-harvest']
 
@@ -33,17 +34,12 @@ export default function GrowsPage() {
       if (filters.species !== 'all' && grow.species !== filters.species) return false
       if (filters.phase !== 'all' && grow.phase !== filters.phase) return false
       if (filters.tag !== 'all' && !grow.tags.includes(filters.tag)) return false
-      if (searchQuery) {
-        const haystack = `${grow.name} ${grow.species} ${grow.tags.join(' ')}`.toLowerCase()
-        if (!haystack.includes(searchQuery.toLowerCase())) return false
-      }
+      if (searchQuery && !fuzzyMatchesGrow(grow, searchQuery)) return false
       return true
     })
   }, [state.grows, filters, searchQuery])
 
   const activeGrows = filtered.filter((grow) => grow.status === 'active')
-  const completedGrows = filtered.filter((grow) => grow.status === 'complete')
-
   return (
     <div className="page">
       <div className="page-header">
@@ -74,6 +70,7 @@ export default function GrowsPage() {
                 grow={grow}
                 logs={state.logs}
                 onQuickLog={openQuickLog}
+                compact={state.settings.uiPreferences?.compactCards}
               />
             ))}
           </div>
@@ -86,27 +83,6 @@ export default function GrowsPage() {
                 Create Grow Run
               </Link>
             }
-          />
-        )}
-      </section>
-
-      <section className="section">
-        <h2>Completed</h2>
-        {completedGrows.length ? (
-          <div className="phone-card-grid">
-            {completedGrows.map((grow) => (
-              <PhoneGrowCard
-                key={grow.id}
-                grow={grow}
-                logs={state.logs}
-                onQuickLog={openQuickLog}
-              />
-            ))}
-          </div>
-        ) : (
-          <EmptyState
-            title="No completed grows"
-            description="Finish a run to see it archived here for reference."
           />
         )}
       </section>

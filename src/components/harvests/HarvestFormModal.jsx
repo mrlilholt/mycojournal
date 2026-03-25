@@ -162,13 +162,19 @@ export default function HarvestFormModal({ open, onClose, growId, initialHarvest
         </label>
         <label className="full-width">
           Harvest Photos
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            multiple
-            onChange={(event) => setPhotoFiles(Array.from(event.target.files || []))}
-          />
+          <label className="file-picker">
+            <span className="file-picker__button">Choose Photos</span>
+            <span className="file-picker__name">
+              {photoFiles.length ? `${photoFiles.length} selected` : 'No files chosen'}
+            </span>
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              multiple
+              onChange={(event) => setPhotoFiles(Array.from(event.target.files || []))}
+            />
+          </label>
           <span className="helper-text">Photos are compressed automatically before upload.</span>
         </label>
         {existingPhotos.length ? (

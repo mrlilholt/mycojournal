@@ -23,6 +23,11 @@ export function createSeedState() {
       range: 40,
       co2: 15,
       contam: 25
+    },
+    uiPreferences: {
+      compactCards: false,
+      defaultGalleryView: 'grow',
+      timelineExpandedDefault: true
     }
   }
 

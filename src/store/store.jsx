@@ -243,6 +243,9 @@ async function ensureSettings(userId, settings) {
   if (!data.healthWeights) {
     updates.healthWeights = settings.healthWeights || {}
   }
+  if (!data.uiPreferences) {
+    updates.uiPreferences = settings.uiPreferences || {}
+  }
   const currentPresets = data.presets || {}
   const mergedPresets = { ...SPECIES_PRESETS, ...currentPresets }
   const missingPreset = Object.keys(SPECIES_PRESETS).some((key) => currentPresets[key] == null)

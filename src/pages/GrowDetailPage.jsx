@@ -160,11 +160,12 @@ export default function GrowDetailPage() {
   }, [grow])
 
   useEffect(() => {
+    const expandDefault = state.settings.uiPreferences?.timelineExpandedDefault !== false
     setActiveTimelineId((current) => {
       if (timeline.some((item) => item.id === current)) return current
-      return timeline[0]?.id || ''
+      return expandDefault ? timeline[0]?.id || '' : ''
     })
-  }, [timeline])
+  }, [timeline, state.settings.uiPreferences?.timelineExpandedDefault])
 
   if (!grow) {
     return (

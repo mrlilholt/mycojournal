@@ -79,7 +79,7 @@ function useMediaQuery(query) {
   return matches
 }
 
-export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
+export default function PhoneGrowCard({ grow, logs, onQuickLog, compact = false }) {
   const { actions } = useStore()
   const { user } = useAuth()
   const isMobile = useMediaQuery('(max-width: 900px)')
@@ -262,7 +262,11 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
   }, [isMobile])
 
   return (
-    <div className={`phone-grow-card ${isMobile && !expanded ? 'phone-grow-card--collapsed' : ''}`}>
+    <div
+      className={`phone-grow-card ${compact ? 'phone-grow-card--compact' : ''} ${
+        isMobile && !expanded ? 'phone-grow-card--collapsed' : ''
+      }`}
+    >
       <div className="phone-grow-card__vignette" />
       <div className="phone-grow-card__nav">
         <div className="phone-grow-card__chevron">
@@ -492,12 +496,16 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog }) {
             </label>
             <label className="full">
               Photo
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
-              />
+              <label className="file-picker">
+                <span className="file-picker__button">Choose Photo</span>
+                <span className="file-picker__name">{photoFile?.name || 'No file chosen'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(event) => setPhotoFile(event.target.files?.[0] || null)}
+                />
+              </label>
             </label>
             {photoPreview ? (
               <div className="phone-grow-card__photo-preview">

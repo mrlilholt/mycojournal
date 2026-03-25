@@ -1,20 +1,80 @@
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../store/auth.jsx'
+import { fuzzyMatchesGrow } from '../../utils/search.js'
 
-export default function TopBar({ searchQuery, onSearchChange, onQuickLog, onToggleNav }) {
-  const { signOut } = useAuth()
+export default function TopBar({
+  searchQuery,
+  onSearchChange,
+  onQuickLog,
+  onToggleNav,
+  onOpenAccount,
+  grows = []
+}) {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const searchRef = useRef(null)
+  const suggestions = useMemo(
+    () =>
+      searchQuery
+        ? grows.filter((grow) => fuzzyMatchesGrow(grow, searchQuery)).slice(0, 8)
+        : [],
+    [grows, searchQuery]
+  )
+
+  const handleSelect = (growId) => {
+    setOpen(false)
+    onSearchChange('')
+    navigate(`/grows/${growId}`)
+  }
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!searchRef.current?.contains(event.target)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <header className="topbar">
       <img className="topbar-logo" src="/myco.png" alt="MycoJournal" />
       <div className="topbar-content">
         <div className="topbar-search">
-          <input
-            className="search-input"
-            type="search"
-            placeholder="Search grows, tags, species..."
-            value={searchQuery}
-            onChange={(event) => onSearchChange(event.target.value)}
-          />
+          <div className="topbar-search-box" ref={searchRef}>
+            <input
+              className="search-input"
+              type="search"
+              placeholder="Search grows, tags, species..."
+              value={searchQuery}
+              onFocus={() => setOpen(true)}
+              onChange={(event) => {
+                onSearchChange(event.target.value)
+                setOpen(true)
+              }}
+            />
+            {open && searchQuery && suggestions.length ? (
+              <div className="search-results">
+                {suggestions.map((grow) => (
+                  <button
+                    key={grow.id}
+                    className="search-result"
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => handleSelect(grow.id)}
+                  >
+                    <strong>{grow.name}</strong>
+                    <span className="muted">
+                      {grow.species} · {grow.status === 'complete' ? 'Harvested' : 'Active'} · {grow.phase}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="topbar-actions">
           <button
@@ -32,8 +92,12 @@ export default function TopBar({ searchQuery, onSearchChange, onQuickLog, onTogg
           <button className="secondary-btn" type="button" onClick={onQuickLog}>
             Quick Log
           </button>
-          <button className="ghost-btn" type="button" onClick={signOut}>
-            Sign out
+          <button className="topbar-avatar-btn" type="button" onClick={onOpenAccount} aria-label="Open account settings">
+            {user?.photoURL ? (
+              <img className="topbar-avatar" src={user.photoURL} alt={user.displayName || 'User'} />
+            ) : (
+              <span className="topbar-avatar-fallback">{user?.displayName?.[0] || 'U'}</span>
+            )}
           </button>
         </div>
       </div>

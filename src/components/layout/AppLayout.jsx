@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar.jsx'
 import TopBar from './TopBar.jsx'
+import AccountModal from './AccountModal.jsx'
 import LogFormModal from '../logs/LogFormModal.jsx'
 import { useStore } from '../../store/store.jsx'
 
@@ -11,6 +12,7 @@ export default function AppLayout() {
   const [quickLogGrowId, setQuickLogGrowId] = useState('')
   const [quickLogOpen, setQuickLogOpen] = useState(false)
   const [navOpen, setNavOpen] = useState(false)
+  const [accountOpen, setAccountOpen] = useState(false)
 
   const openQuickLog = (growId = '') => {
     setQuickLogGrowId(growId)
@@ -32,6 +34,8 @@ export default function AppLayout() {
           onSearchChange={setSearchQuery}
           onQuickLog={() => openQuickLog('')}
           onToggleNav={() => setNavOpen((value) => !value)}
+          onOpenAccount={() => setAccountOpen(true)}
+          grows={state.grows}
         />
         <div className="app-content">
           <Outlet context={{ searchQuery, openQuickLog }} />
@@ -43,6 +47,7 @@ export default function AppLayout() {
         growId={quickLogGrowId}
         growOptions={state.grows}
       />
+      <AccountModal open={accountOpen} onClose={() => setAccountOpen(false)} />
     </div>
   )
 }

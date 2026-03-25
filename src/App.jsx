@@ -7,6 +7,8 @@ import AnalyticsPage from './pages/AnalyticsPage.jsx'
 import SettingsPage from './pages/SettingsPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import SpeciesPage from './pages/SpeciesPage.jsx'
+import GalleryPage from './pages/GalleryPage.jsx'
+import HarvestPage from './pages/HarvestPage.jsx'
 import AuthGate from './components/layout/AuthGate.jsx'
 
 export default function App() {
@@ -19,6 +21,8 @@ export default function App() {
           <Route path="/grows/:id" element={<GrowDetailPage />} />
           <Route path="/new-grow" element={<NewGrowPage />} />
           <Route path="/analytics" element={<AnalyticsPage />} />
+          <Route path="/harvests" element={<HarvestPage />} />
+          <Route path="/gallery" element={<GalleryPage />} />
           <Route path="/species" element={<SpeciesPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />

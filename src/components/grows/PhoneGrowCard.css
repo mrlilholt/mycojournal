@@ -577,6 +577,35 @@
   padding-bottom: var(--space-2);
 }
 
+.phone-grow-card--compact {
+  padding: 12px;
+  gap: 10px;
+}
+
+.phone-grow-card--compact .phone-grow-card__body {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.8fr);
+  gap: 12px;
+}
+
+.phone-grow-card--compact .phone-grow-card__ring svg {
+  max-width: 148px;
+}
+
+.phone-grow-card--compact .phone-grow-card__image,
+.phone-grow-card--compact .phone-grow-card__image img {
+  height: 98px;
+  max-height: 98px;
+}
+
+.phone-grow-card--compact .phone-grow-card__chart-svg {
+  height: 96px;
+}
+
+.phone-grow-card--compact .phone-grow-card__form {
+  gap: 8px;
+  padding: 10px;
+}
+
 .phone-grow-card--collapsed .phone-grow-card__body {
   display: none;
 }
