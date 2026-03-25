@@ -1,3 +1,13 @@
+import { getDefaultHarvestWindows, getDefaultPhaseThresholds } from './growthPhases.js'
+
+function withGrowthDefaults(preset, harvestWindow = null) {
+  return {
+    ...preset,
+    phaseThresholds: getDefaultPhaseThresholds(),
+    harvestWindow: harvestWindow || null
+  }
+}
+
 export const SPECIES_LIST = [
   'Pleurotus ostreatus (Snow Oyster)',
   'Pholiota adiposa (Chestnut)',
@@ -15,95 +25,95 @@ export const SPECIES_LIST = [
 ]
 
 export const SPECIES_PRESETS = {
-  'Pleurotus ostreatus (Blue Oyster)': {
+  'Pleurotus ostreatus (Blue Oyster)': withGrowthDefaults({
     tempMin: 55,
     tempMax: 75,
     humidityMin: 85,
     humidityMax: 95,
     co2Max: 1000
-  },
-  'Pleurotus pulmonarius (Italian Oyster)': {
+  }, getDefaultHarvestWindows()['Pleurotus ostreatus (Blue Oyster)']),
+  'Pleurotus pulmonarius (Italian Oyster)': withGrowthDefaults({
     tempMin: 65,
     tempMax: 75,
     humidityMin: 85,
     humidityMax: 95,
     co2Max: 800
-  },
-  'Pleurotus citrinolileatus (Golden Oyster)': {
+  }, null),
+  'Pleurotus citrinolileatus (Golden Oyster)': withGrowthDefaults({
     tempMin: 65,
     tempMax: 80,
     humidityMin: 88,
     humidityMax: 95,
     co2Max: 1000
-  },
-  'Pleurotus djamor (Pink Oyster)': {
+  }, getDefaultHarvestWindows()['Pleurotus citrinolileatus (Golden Oyster)']),
+  'Pleurotus djamor (Pink Oyster)': withGrowthDefaults({
     tempMin: 70,
     tempMax: 80,
     humidityMin: 85,
     humidityMax: 95,
     co2Max: 1000
-  },
-  'Pleurotus ostreatus (Snow Oyster)': {
+  }, getDefaultHarvestWindows()['Pleurotus djamor (Pink Oyster)']),
+  'Pleurotus ostreatus (Snow Oyster)': withGrowthDefaults({
     tempMin: 45,
     tempMax: 65,
     humidityMin: 85,
     humidityMax: 95,
     co2Max: 1000
-  },
-  "Hericium erinaceus (Lion's Mane)": {
+  }, null),
+  "Hericium erinaceus (Lion's Mane)": withGrowthDefaults({
     tempMin: 55,
     tempMax: 70,
     humidityMin: 80,
     humidityMax: 90,
     co2Max: 1000
-  },
-  'Pleurotus sp. (Black King)': {
+  }, getDefaultHarvestWindows()["Hericium erinaceus (Lion's Mane)"]),
+  'Pleurotus sp. (Black King)': withGrowthDefaults({
     tempMin: 55,
     tempMax: 70,
     humidityMin: 80,
     humidityMax: 90,
     co2Max: 800
-  },
-  'King Trumpet (Pleurotus eryngii)': {
+  }, null),
+  'King Trumpet (Pleurotus eryngii)': withGrowthDefaults({
     tempMin: 50,
     tempMax: 65,
     humidityMin: 85,
     humidityMax: 95,
     co2Max: 2000
-  },
-  'Pholiota adiposa (Chestnut)': {
+  }, getDefaultHarvestWindows()['King Trumpet (Pleurotus eryngii)']),
+  'Pholiota adiposa (Chestnut)': withGrowthDefaults({
     tempMin: 60,
     tempMax: 70,
     humidityMin: 88,
     humidityMax: 95,
     co2Max: 1000
-  },
-  'Lentinula edodes (Shiitake)': {
+  }, getDefaultHarvestWindows()['Pholiota adiposa (Chestnut)']),
+  'Lentinula edodes (Shiitake)': withGrowthDefaults({
     tempMin: 55,
     tempMax: 70,
     humidityMin: 85,
     humidityMax: 95,
     co2Max: 1000
-  },
-  'Cyclocybe aegerita (Pioppino)': {
+  }, getDefaultHarvestWindows()['Lentinula edodes (Shiitake)']),
+  'Cyclocybe aegerita (Pioppino)': withGrowthDefaults({
     tempMin: 55,
     tempMax: 65,
     humidityMin: 85,
     humidityMax: 95,
     co2Max: 2000
-  },
-  'Pholiota microspora (Nameko)': {
+  }, getDefaultHarvestWindows()['Cyclocybe aegerita (Pioppino)']),
+  'Pholiota microspora (Nameko)': withGrowthDefaults({
     tempMin: 45,
     tempMax: 65,
     humidityMin: 88,
     humidityMax: 95,
     co2Max: 1000
-  },
-  'Ganoderma lucidum (Reishi)': {
+  }, null),
+  'Ganoderma lucidum (Reishi)': withGrowthDefaults({
     tempMin: null,
     tempMax: null,
     humidityMin: null,
     humidityMax: null,
     co2Max: null
-  }
+  }, null)
 }

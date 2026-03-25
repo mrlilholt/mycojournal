@@ -14,6 +14,12 @@ import { formatDate, formatDateTime } from '../utils/date.js'
 import { formatTemp } from '../utils/units.js'
 import { exportGrowToCsv } from '../utils/export.js'
 import { getEventsForGrow, getHarvestsForGrow, getLogsForGrow, getTimelineItems } from '../utils/data.js'
+import {
+  derivePhaseFromMeasurement,
+  getHarvestRecommendation,
+  getLatestMeasurementLog,
+  getMeasuredFlushMm
+} from '../utils/growthPhases.js'
 
 const tabs = ['timeline', 'environment', 'harvests', 'notes']
 
@@ -138,6 +144,19 @@ export default function GrowDetailPage() {
       .slice()
       .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
   }, [logs])
+  const latestMeasurementLog = useMemo(() => getLatestMeasurementLog(logs, grow?.id), [logs, grow?.id])
+  const measuredMm = getMeasuredFlushMm(latestMeasurementLog)
+  const preset = state.settings.presets?.[grow?.species] || null
+  const displayPhase =
+    derivePhaseFromMeasurement(measuredMm, grow?.phaseThresholds || preset?.phaseThresholds) || grow?.phase
+  const harvestRecommendation = getHarvestRecommendation(
+    grow?.species,
+    measuredMm,
+    {
+      ...state.settings.harvestWindows,
+      ...(preset?.harvestWindow ? { [grow?.species]: preset.harvestWindow } : {})
+    }
+  )
 
   const targetTemp = useMemo(
     () => midpoint(grow?.targets?.tempMin, grow?.targets?.tempMax),
@@ -260,7 +279,8 @@ export default function GrowDetailPage() {
       <div className="page-header">
         <div>
           <h1>{grow.name}</h1>
-          <p className="muted">{grow.species} · {grow.method} · {grow.phase}</p>
+          <p className="muted">{grow.species} · {grow.method} · {displayPhase}</p>
+          {harvestRecommendation ? <p className="muted">{harvestRecommendation.message}</p> : null}
           <TagPills tags={grow.tags} />
         </div>
         <div className="header-actions">

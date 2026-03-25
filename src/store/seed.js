@@ -1,4 +1,5 @@
 import { SPECIES_LIST, SPECIES_PRESETS } from '../utils/speciesDefaults.js'
+import { getDefaultHarvestWindows } from '../utils/growthPhases.js'
 
 export function createSeedState() {
   const grows = []
@@ -18,6 +19,7 @@ export function createSeedState() {
     },
     presets: { ...SPECIES_PRESETS },
     speciesList: [...SPECIES_LIST],
+    harvestWindows: getDefaultHarvestWindows(),
     healthWeights: {
       recency: 20,
       range: 40,

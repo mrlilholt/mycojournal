@@ -6,7 +6,7 @@ import { parseTemp, toC } from '../utils/units.js'
 import { SPECIES_LIST, SPECIES_PRESETS } from '../utils/speciesDefaults.js'
 
 const methodOptions = ['Bag', 'Monotub', 'Block', 'Log', 'Other']
-const phaseOptions = ['Incubation', 'Pinning', 'Fruiting', 'Post-harvest']
+const phaseOptions = ['Incubation', 'Pinning', 'Early Growth', 'Fruiting', 'Mature Growth', 'Post-harvest']
 
 export default function NewGrowPage() {
   const { state, actions } = useStore()

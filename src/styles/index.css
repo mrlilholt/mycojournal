@@ -1422,9 +1422,9 @@ a {
 
 .preset-header {
   display: grid;
-  grid-template-columns: 1.4fr repeat(5, 1fr) auto;
+  grid-template-columns: 1.5fr repeat(10, minmax(96px, 1fr)) auto;
   gap: 8px;
-  min-width: 820px;
+  min-width: 1480px;
   font-size: 11px;
   color: var(--text-tertiary);
   text-transform: uppercase;
@@ -1434,9 +1434,9 @@ a {
 
 .preset-row {
   display: grid;
-  grid-template-columns: 1.4fr repeat(5, 1fr) auto;
+  grid-template-columns: 1.5fr repeat(10, minmax(96px, 1fr)) auto;
   gap: 8px;
-  min-width: 820px;
+  min-width: 1480px;
 }
 
 .preset-row input {

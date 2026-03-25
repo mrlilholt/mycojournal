@@ -4,6 +4,12 @@ import { useStore } from '../../store/store.jsx'
 import { useAuth } from '../../store/auth.jsx'
 import { uploadEntryPhotos } from '../../utils/photos.js'
 import { uid } from '../../utils/id.js'
+import {
+  derivePhaseFromMeasurement,
+  getHarvestRecommendation,
+  getLatestMeasurementLog,
+  getMeasuredFlushMm
+} from '../../utils/growthPhases.js'
 import './PhoneGrowCard.css'
 
 function weeksSinceStart(startDate) {
@@ -27,11 +33,11 @@ function ordinal(n) {
 
 function getChartPoints(logs = [], growId) {
   return logs
-    .filter((log) => log.growId === growId && log.growthMmPerDay != null)
+    .filter((log) => log.growId === growId && getMeasuredFlushMm(log) != null)
     .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
     .slice(-7)
     .map((log) => ({
-      value: Number(log.growthMmPerDay),
+      value: Number(getMeasuredFlushMm(log)),
       timestamp: log.timestamp,
       photos: Array.isArray(log.photos) ? log.photos : []
     }))
@@ -44,6 +50,10 @@ function getStageLabels(phase) {
       return ['Colonizing', 'Ready to fruit']
     case 'Pinning':
       return ['Primordia', 'Pinset']
+    case 'Early Growth':
+      return ['Pinset', 'Fast expansion']
+    case 'Mature Growth':
+      return ['Harvest ready', 'Pick soon']
     case 'Post-harvest':
       return ['Flush complete', 'Reset']
     case 'Fruiting':
@@ -80,7 +90,7 @@ function useMediaQuery(query) {
 }
 
 export default function PhoneGrowCard({ grow, logs, onQuickLog, compact = false }) {
-  const { actions } = useStore()
+  const { state, actions } = useStore()
   const { user } = useAuth()
   const isMobile = useMediaQuery('(max-width: 900px)')
   const [expanded, setExpanded] = useState(!isMobile)
@@ -122,10 +132,32 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog, compact = false 
       ? `${linePath} L ${coords[coords.length - 1].x} ${height - padding} L ${coords[0].x} ${height - padding} Z`
       : ''
   const latestGrowth = points.length ? points[points.length - 1] : null
-  const [stageStart, stageEnd] = getStageLabels(grow.phase)
   const latestGrowLog = logs
     .filter((log) => log.growId === grow.id)
     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
+  const preset = state.settings.presets?.[grow.species] || null
+  const latestMeasurementLog = getLatestMeasurementLog(logs, grow.id)
+  const measuredMm = getMeasuredFlushMm(latestMeasurementLog)
+  const displayPhase = derivePhaseFromMeasurement(measuredMm, grow.phaseThresholds || preset?.phaseThresholds) || grow.phase
+  const [stageStart, stageEnd] = getStageLabels(displayPhase)
+  const harvestRecommendation = getHarvestRecommendation(
+    grow.species,
+    measuredMm,
+    {
+      ...state.settings.harvestWindows,
+      ...(preset?.harvestWindow ? { [grow.species]: preset.harvestWindow } : {})
+    }
+  )
+  const stageEntries = pointData
+    .map((item, index) => ({
+      index,
+      x: coords[index]?.x ?? width / 2,
+      phase: derivePhaseFromMeasurement(item.value, grow.phaseThresholds || preset?.phaseThresholds)
+    }))
+    .filter((item) => item.phase)
+  const stageMilestones = Array.from(
+    new Map(stageEntries.map((item) => [item.phase, item])).values()
+  )
 
   const [form, setForm] = useState({
     growthMmPerDay: '',
@@ -156,9 +188,9 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog, compact = false 
       : null
   const activePoint = activePointIndex != null ? pointData[activePointIndex] : pointData[defaultPointIndex] || null
   const activeChartLabel = activePoint
-    ? `${activePoint.value.toFixed(1)} mm/day`
+    ? `${activePoint.value.toFixed(1)} mm`
     : latestGrowth != null
-      ? `${latestGrowth.toFixed(1)} mm/day`
+      ? `${latestGrowth.toFixed(1)} mm`
       : 'No logs'
   const activeChartDate = activePoint?.timestamp ? new Date(activePoint.timestamp).toLocaleDateString() : ''
   const activePhotoPoint = chartPhotoPoints.find((item) => item.index === activePointIndex) || null
@@ -277,8 +309,15 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog, compact = false 
         <div>
           <div className="phone-grow-card__title">{grow.name}</div>
           <div className="phone-grow-card__subtitle">
-            {grow.species} • {grow.method} • {grow.phase}
+            {grow.species} • {grow.method} • {displayPhase}
           </div>
+          {harvestRecommendation ? (
+            <div
+              className={`phone-grow-card__recommendation phone-grow-card__recommendation--${harvestRecommendation.level}`}
+            >
+              {harvestRecommendation.message}
+            </div>
+          ) : null}
         </div>
         <Link to={`/grows/${grow.id}`} className="phone-grow-card__action" aria-label="Open grow">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -420,8 +459,26 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog, compact = false 
               <div className="phone-grow-card__chart-empty">Add `mm from block` logs to see the flush develop</div>
             ) : null}
             <div className="phone-grow-card__chart-labels">
-              <span>{stageStart}</span>
-              <span>{stageEnd}</span>
+              {stageMilestones.length > 0 ? (
+                stageMilestones.map((item) => (
+                  <span
+                    key={item.phase}
+                    className={`phone-grow-card__chart-stage ${
+                      activePoint && derivePhaseFromMeasurement(activePoint.value, grow.phaseThresholds || preset?.phaseThresholds) === item.phase
+                        ? 'is-active'
+                        : ''
+                    }`}
+                    style={{ left: `${(item.x / width) * 100}%` }}
+                  >
+                    {item.phase}
+                  </span>
+                ))
+              ) : (
+                <>
+                  <span>{stageStart}</span>
+                  <span>{stageEnd}</span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -612,7 +669,7 @@ export default function PhoneGrowCard({ grow, logs, onQuickLog, compact = false 
             </div>
             <div className="phone-grow-card__lightbox-meta">
               {new Date(chartPhotoPoints[lightboxIndex].timestamp).toLocaleString()} ·{' '}
-              {chartPhotoPoints[lightboxIndex].value.toFixed(1)} mm/day
+              {chartPhotoPoints[lightboxIndex].value.toFixed(1)} mm
             </div>
           </div>
         </div>

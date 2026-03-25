@@ -13,6 +13,12 @@ import { useAuth } from './auth.jsx'
 import { db } from '../firebase/client.js'
 import { SPECIES_LIST, SPECIES_PRESETS } from '../utils/speciesDefaults.js'
 import {
+  derivePhaseFromMeasurement,
+  getDefaultHarvestWindows,
+  getLatestMeasurementLog,
+  getMeasuredFlushMm
+} from '../utils/growthPhases.js'
+import {
   collection,
   deleteDoc,
   doc,
@@ -201,6 +207,25 @@ function mapDocs(snapshot) {
   return snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() }))
 }
 
+function mergePresetDefaults(currentPresets = {}) {
+  const merged = {}
+  Object.entries({ ...SPECIES_PRESETS, ...currentPresets }).forEach(([species, preset]) => {
+    merged[species] = {
+      ...(SPECIES_PRESETS[species] || {}),
+      ...(preset || {}),
+      phaseThresholds: {
+        ...(SPECIES_PRESETS[species]?.phaseThresholds || {}),
+        ...(preset?.phaseThresholds || {})
+      },
+      harvestWindow: {
+        ...(SPECIES_PRESETS[species]?.harvestWindow || {}),
+        ...(preset?.harvestWindow || {})
+      }
+    }
+  })
+  return merged
+}
+
 function settingsRef(userId) {
   return doc(db, 'users', userId, 'settings', 'profile')
 }
@@ -246,9 +271,28 @@ async function ensureSettings(userId, settings) {
   if (!data.uiPreferences) {
     updates.uiPreferences = settings.uiPreferences || {}
   }
+  const currentHarvestWindows = data.harvestWindows || {}
+  const mergedHarvestWindows = {
+    ...getDefaultHarvestWindows(),
+    ...currentHarvestWindows
+  }
+  const missingHarvestWindow = Object.keys(getDefaultHarvestWindows()).some(
+    (key) => currentHarvestWindows[key] == null
+  )
+  if (!data.harvestWindows || missingHarvestWindow) {
+    updates.harvestWindows = mergedHarvestWindows
+  }
   const currentPresets = data.presets || {}
-  const mergedPresets = { ...SPECIES_PRESETS, ...currentPresets }
-  const missingPreset = Object.keys(SPECIES_PRESETS).some((key) => currentPresets[key] == null)
+  const mergedPresets = mergePresetDefaults(currentPresets)
+  const missingPreset = Object.keys(SPECIES_PRESETS).some((key) => {
+    const current = currentPresets[key]
+    const base = SPECIES_PRESETS[key]
+    return (
+      current == null ||
+      !current.phaseThresholds ||
+      (base.harvestWindow && !current.harvestWindow)
+    )
+  })
   if (missingPreset) {
     updates.presets = mergedPresets
   }
@@ -276,6 +320,25 @@ async function clearCollection(userId, name) {
   }
 }
 
+function getGrowPreset(grow, presets = {}) {
+  return presets?.[grow?.species] || SPECIES_PRESETS[grow?.species] || null
+}
+
+function getAutoPhaseUpdates(grow, logs, presets = {}, nextLog = null, replacedLogId = null) {
+  if (!grow || grow.status === 'complete') return null
+  const nextLogs = logs.filter((log) => log.growId === grow.id && log.id !== replacedLogId)
+  if (nextLog) nextLogs.push(nextLog)
+  const latestMeasuredLog = getLatestMeasurementLog(nextLogs, grow.id)
+  const measuredMm = getMeasuredFlushMm(latestMeasuredLog)
+  const preset = getGrowPreset(grow, presets)
+  const phase = derivePhaseFromMeasurement(
+    measuredMm,
+    grow.phaseThresholds || preset?.phaseThresholds
+  )
+  if (!phase || phase === grow.phase) return null
+  return { phase, updatedAt: new Date().toISOString() }
+}
+
 async function deleteByGrowId(userId, name, growId) {
   const ref = collection(db, 'users', userId, name)
   const snap = await getDocs(query(ref, where('growId', '==', growId)))
@@ -289,6 +352,7 @@ export function StoreProvider({ children }) {
   const { user } = useAuth()
   const [hydrated, setHydrated] = useState(false)
   const subscriptions = useRef([])
+  const phaseSyncRef = useRef(new Set())
 
   const [state, dispatch] = useReducer(reducer, initialState)
 
@@ -351,6 +415,24 @@ export function StoreProvider({ children }) {
       subscriptions.current = []
     }
   }, [user])
+
+  useEffect(() => {
+    if (!user || !hydrated) return
+
+    state.grows.forEach((grow) => {
+      if (grow.status === 'complete' || phaseSyncRef.current.has(grow.id)) return
+      const phaseUpdates = getAutoPhaseUpdates(grow, state.logs, state.settings.presets)
+      if (!phaseUpdates) return
+      phaseSyncRef.current.add(grow.id)
+      updateDoc(doc(db, 'users', user.uid, 'grows', grow.id), phaseUpdates)
+        .catch((error) => {
+          console.error('Failed to sync grow phase', error)
+        })
+        .finally(() => {
+          phaseSyncRef.current.delete(grow.id)
+        })
+    })
+  }, [user, hydrated, state.grows, state.logs, state.settings.presets])
 
   const actions = useMemo(
     () => ({
@@ -417,21 +499,32 @@ export function StoreProvider({ children }) {
         })
       },
       unarchiveGrow: async (id) => {
+        const grow = state.grows.find((item) => item.id === id)
+        const phaseUpdates = getAutoPhaseUpdates(grow, state.logs, state.settings.presets)
+        const nextPhase = phaseUpdates?.phase || (grow?.phase === 'Post-harvest' ? 'Fruiting' : grow?.phase)
         if (!user) {
           dispatch({ type: 'UNARCHIVE_GROW', payload: id })
+          if (nextPhase && nextPhase !== grow?.phase) {
+            dispatch({ type: 'UPDATE_GROW', payload: { id, updates: { phase: nextPhase } } })
+          }
           return
         }
-        const grow = state.grows.find((item) => item.id === id)
         await updateDoc(doc(db, 'users', user.uid, 'grows', id), {
           status: 'active',
-          phase: grow?.phase === 'Post-harvest' ? 'Fruiting' : grow?.phase,
+          phase: nextPhase,
           updatedAt: new Date().toISOString()
         })
       },
       addLog: async (payload) => {
         const id = payload.id || uid('log')
+        const nextLog = { ...payload, id }
+        const grow = state.grows.find((item) => item.id === payload.growId)
+        const phaseUpdates = getAutoPhaseUpdates(grow, state.logs, state.settings.presets, nextLog)
         if (!user) {
-          dispatch({ type: 'ADD_LOG', payload: { ...payload, id } })
+          dispatch({ type: 'ADD_LOG', payload: nextLog })
+          if (phaseUpdates) {
+            dispatch({ type: 'UPDATE_GROW', payload: { id: payload.growId, updates: phaseUpdates } })
+          }
           return id
         }
         const now = new Date().toISOString()
@@ -440,14 +533,30 @@ export function StoreProvider({ children }) {
           id,
           createdAt: now
         })
+        if (phaseUpdates) {
+          await updateDoc(doc(db, 'users', user.uid, 'grows', payload.growId), phaseUpdates)
+        }
         return id
       },
       updateLog: async (id, updates) => {
+        const existingLog = state.logs.find((log) => log.id === id)
+        const grow = state.grows.find((item) => item.id === (updates.growId || existingLog?.growId))
+        const nextLog = { ...existingLog, ...updates, id }
+        const phaseUpdates = getAutoPhaseUpdates(grow, state.logs, state.settings.presets, nextLog, id)
         if (!user) {
           dispatch({ type: 'UPDATE_LOG', payload: { id, updates } })
+          if (phaseUpdates) {
+            dispatch({
+              type: 'UPDATE_GROW',
+              payload: { id: nextLog.growId, updates: phaseUpdates }
+            })
+          }
           return
         }
         await updateDoc(doc(db, 'users', user.uid, 'logs', id), updates)
+        if (phaseUpdates) {
+          await updateDoc(doc(db, 'users', user.uid, 'grows', nextLog.growId), phaseUpdates)
+        }
       },
       addEvent: async (payload) => {
         if (!user) {

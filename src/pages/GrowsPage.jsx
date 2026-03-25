@@ -6,7 +6,7 @@ import EmptyState from '../components/ui/EmptyState.jsx'
 import { useStore } from '../store/store.jsx'
 import { fuzzyMatchesGrow } from '../utils/search.js'
 
-const phaseOptions = ['Incubation', 'Pinning', 'Fruiting', 'Post-harvest']
+const phaseOptions = ['Incubation', 'Pinning', 'Early Growth', 'Fruiting', 'Mature Growth', 'Post-harvest']
 
 export default function GrowsPage() {
   const { state } = useStore()

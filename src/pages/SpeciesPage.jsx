@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useStore } from '../store/store.jsx'
 import { parseTemp, toC } from '../utils/units.js'
 import { SPECIES_LIST, SPECIES_PRESETS } from '../utils/speciesDefaults.js'
+import { getDefaultHarvestWindows, getDefaultPhaseThresholds } from '../utils/growthPhases.js'
 
 export default function SpeciesPage() {
   const { state, actions } = useStore()
@@ -19,7 +20,12 @@ export default function SpeciesPage() {
       tempMax: displayTemp(preset.tempMax),
       humidityMin: preset.humidityMin ?? '',
       humidityMax: preset.humidityMax ?? '',
-      co2Max: preset.co2Max ?? ''
+      co2Max: preset.co2Max ?? '',
+      pinningMax: preset.phaseThresholds?.pinningMax ?? getDefaultPhaseThresholds().pinningMax,
+      earlyGrowthMax: preset.phaseThresholds?.earlyGrowthMax ?? getDefaultPhaseThresholds().earlyGrowthMax,
+      fruitingMax: preset.phaseThresholds?.fruitingMax ?? getDefaultPhaseThresholds().fruitingMax,
+      harvestMin: preset.harvestWindow?.min ?? getDefaultHarvestWindows()[species]?.min ?? '',
+      harvestMax: preset.harvestWindow?.max ?? getDefaultHarvestWindows()[species]?.max ?? ''
     }))
   }, [state.settings.presets, unitLabel])
 
@@ -30,7 +36,12 @@ export default function SpeciesPage() {
     tempMax: '',
     humidityMin: '',
     humidityMax: '',
-    co2Max: ''
+    co2Max: '',
+    pinningMax: getDefaultPhaseThresholds().pinningMax,
+    earlyGrowthMax: getDefaultPhaseThresholds().earlyGrowthMax,
+    fruitingMax: getDefaultPhaseThresholds().fruitingMax,
+    harvestMin: '',
+    harvestMax: ''
   })
 
   useEffect(() => {
@@ -53,7 +64,12 @@ export default function SpeciesPage() {
       tempMax: preset?.tempMax != null ? displayTemp(preset.tempMax) : '',
       humidityMin: preset?.humidityMin ?? '',
       humidityMax: preset?.humidityMax ?? '',
-      co2Max: preset?.co2Max ?? ''
+      co2Max: preset?.co2Max ?? '',
+      pinningMax: preset?.phaseThresholds?.pinningMax ?? getDefaultPhaseThresholds().pinningMax,
+      earlyGrowthMax: preset?.phaseThresholds?.earlyGrowthMax ?? getDefaultPhaseThresholds().earlyGrowthMax,
+      fruitingMax: preset?.phaseThresholds?.fruitingMax ?? getDefaultPhaseThresholds().fruitingMax,
+      harvestMin: preset?.harvestWindow?.min ?? getDefaultHarvestWindows()[species]?.min ?? '',
+      harvestMax: preset?.harvestWindow?.max ?? getDefaultHarvestWindows()[species]?.max ?? ''
     })
   }
 
@@ -66,7 +82,16 @@ export default function SpeciesPage() {
         tempMax: row.tempMax === '' ? null : parseTemp(row.tempMax, unitLabel),
         humidityMin: row.humidityMin === '' ? null : Number(row.humidityMin),
         humidityMax: row.humidityMax === '' ? null : Number(row.humidityMax),
-        co2Max: row.co2Max === '' ? null : Number(row.co2Max)
+        co2Max: row.co2Max === '' ? null : Number(row.co2Max),
+        phaseThresholds: {
+          pinningMax: row.pinningMax === '' ? null : Number(row.pinningMax),
+          earlyGrowthMax: row.earlyGrowthMax === '' ? null : Number(row.earlyGrowthMax),
+          fruitingMax: row.fruitingMax === '' ? null : Number(row.fruitingMax)
+        },
+        harvestWindow: {
+          min: row.harvestMin === '' ? null : Number(row.harvestMin),
+          max: row.harvestMax === '' ? null : Number(row.harvestMax)
+        }
       }
     })
     const nextSpecies = new Set(state.settings.speciesList || [])
@@ -82,7 +107,12 @@ export default function SpeciesPage() {
       tempMax: newPreset.tempMax,
       humidityMin: newPreset.humidityMin,
       humidityMax: newPreset.humidityMax,
-      co2Max: newPreset.co2Max
+      co2Max: newPreset.co2Max,
+      pinningMax: newPreset.pinningMax,
+      earlyGrowthMax: newPreset.earlyGrowthMax,
+      fruitingMax: newPreset.fruitingMax,
+      harvestMin: newPreset.harvestMin,
+      harvestMax: newPreset.harvestMax
     }
     setPresetRows([row, ...presetRows])
     const nextSpecies = new Set(state.settings.speciesList || [])
@@ -94,7 +124,12 @@ export default function SpeciesPage() {
       tempMax: '',
       humidityMin: '',
       humidityMax: '',
-      co2Max: ''
+      co2Max: '',
+      pinningMax: getDefaultPhaseThresholds().pinningMax,
+      earlyGrowthMax: getDefaultPhaseThresholds().earlyGrowthMax,
+      fruitingMax: getDefaultPhaseThresholds().fruitingMax,
+      harvestMin: '',
+      harvestMax: ''
     })
   }
 
@@ -137,7 +172,19 @@ export default function SpeciesPage() {
               onClick={() =>
                 setPresetRows([
                   ...presetRows,
-                  { species: '', tempMin: '', tempMax: '', humidityMin: '', humidityMax: '', co2Max: '' }
+                  {
+                    species: '',
+                    tempMin: '',
+                    tempMax: '',
+                    humidityMin: '',
+                    humidityMax: '',
+                    co2Max: '',
+                    pinningMax: getDefaultPhaseThresholds().pinningMax,
+                    earlyGrowthMax: getDefaultPhaseThresholds().earlyGrowthMax,
+                    fruitingMax: getDefaultPhaseThresholds().fruitingMax,
+                    harvestMin: '',
+                    harvestMax: ''
+                  }
                 ])
               }
             >
@@ -152,6 +199,11 @@ export default function SpeciesPage() {
               <span>Humidity Min</span>
               <span>Humidity Max</span>
               <span>CO2 Max</span>
+              <span>Pinning ≤ mm</span>
+              <span>Early ≤ mm</span>
+              <span>Fruiting ≤ mm</span>
+              <span>Harvest Min</span>
+              <span>Harvest Max</span>
               <span />
             </div>
             <div className="preset-row preset-row--new">
@@ -190,6 +242,36 @@ export default function SpeciesPage() {
                 placeholder="CO2 Max"
                 value={newPreset.co2Max}
                 onChange={(event) => setNewPreset({ ...newPreset, co2Max: event.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Pinning ≤ mm"
+                value={newPreset.pinningMax}
+                onChange={(event) => setNewPreset({ ...newPreset, pinningMax: event.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Early ≤ mm"
+                value={newPreset.earlyGrowthMax}
+                onChange={(event) => setNewPreset({ ...newPreset, earlyGrowthMax: event.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Fruiting ≤ mm"
+                value={newPreset.fruitingMax}
+                onChange={(event) => setNewPreset({ ...newPreset, fruitingMax: event.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Harvest Min"
+                value={newPreset.harvestMin}
+                onChange={(event) => setNewPreset({ ...newPreset, harvestMin: event.target.value })}
+              />
+              <input
+                type="number"
+                placeholder="Harvest Max"
+                value={newPreset.harvestMax}
+                onChange={(event) => setNewPreset({ ...newPreset, harvestMax: event.target.value })}
               />
               <button className="secondary-btn" type="button" onClick={handleAddPreset}>
                 Add
@@ -254,6 +336,56 @@ export default function SpeciesPage() {
                   onChange={(event) => {
                     const next = [...presetRows]
                     next[index] = { ...row, co2Max: event.target.value }
+                    setPresetRows(next)
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Pinning ≤ mm"
+                  value={row.pinningMax}
+                  onChange={(event) => {
+                    const next = [...presetRows]
+                    next[index] = { ...row, pinningMax: event.target.value }
+                    setPresetRows(next)
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Early ≤ mm"
+                  value={row.earlyGrowthMax}
+                  onChange={(event) => {
+                    const next = [...presetRows]
+                    next[index] = { ...row, earlyGrowthMax: event.target.value }
+                    setPresetRows(next)
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Fruiting ≤ mm"
+                  value={row.fruitingMax}
+                  onChange={(event) => {
+                    const next = [...presetRows]
+                    next[index] = { ...row, fruitingMax: event.target.value }
+                    setPresetRows(next)
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Harvest Min"
+                  value={row.harvestMin}
+                  onChange={(event) => {
+                    const next = [...presetRows]
+                    next[index] = { ...row, harvestMin: event.target.value }
+                    setPresetRows(next)
+                  }}
+                />
+                <input
+                  type="number"
+                  placeholder="Harvest Max"
+                  value={row.harvestMax}
+                  onChange={(event) => {
+                    const next = [...presetRows]
+                    next[index] = { ...row, harvestMax: event.target.value }
                     setPresetRows(next)
                   }}
                 />
