@@ -3,6 +3,7 @@ import { useStore } from '../store/store.jsx'
 import { parseTemp, toC } from '../utils/units.js'
 import { SPECIES_LIST, SPECIES_PRESETS } from '../utils/speciesDefaults.js'
 import { getDefaultHarvestWindows, getDefaultPhaseThresholds } from '../utils/growthPhases.js'
+import { getMergedForagerSpeciesAliases } from '../utils/foragerSpeciesMatch.js'
 
 export default function SpeciesPage() {
   const { state, actions } = useStore()
@@ -43,10 +44,22 @@ export default function SpeciesPage() {
     harvestMin: '',
     harvestMax: ''
   })
+  const [aliasRows, setAliasRows] = useState([])
 
   useEffect(() => {
     setPresetRows(presetRowsInitial)
   }, [presetRowsInitial])
+
+  useEffect(() => {
+    setAliasRows(
+      Object.values(getMergedForagerSpeciesAliases(state.settings.foragerSpeciesAliases)).map((entry) => ({
+        key: entry.key,
+        commonName: entry.commonName || '',
+        latinName: entry.latinName || '',
+        aliases: (entry.aliases || []).join(', ')
+      }))
+    )
+  }, [state.settings.foragerSpeciesAliases])
 
   const availableSpecies = useMemo(() => {
     const list = new Set(SPECIES_LIST)
@@ -131,6 +144,22 @@ export default function SpeciesPage() {
       harvestMin: '',
       harvestMax: ''
     })
+  }
+
+  const handleAliasSave = () => {
+    const aliases = {}
+    aliasRows.forEach((row) => {
+      if (!row.key) return
+      aliases[row.key] = {
+        commonName: row.commonName,
+        latinName: row.latinName,
+        aliases: row.aliases
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      }
+    })
+    actions.updateSettings({ foragerSpeciesAliases: aliases })
   }
 
   return (
@@ -401,6 +430,72 @@ export default function SpeciesPage() {
           </div>
           <button className="primary-btn" type="button" onClick={handlePresetsSave}>
             Save Presets
+          </button>
+        </div>
+
+        <div className="panel">
+          <div className="section-header">
+            <h3>Forager Species Aliases</h3>
+            <button
+              className="ghost-btn"
+              type="button"
+              onClick={() =>
+                setAliasRows((current) => [...current, { key: '', commonName: '', latinName: '', aliases: '' }])
+              }
+            >
+              + Add Alias
+            </button>
+          </div>
+          <div className="preset-list">
+            <div className="preset-header preset-header--aliases">
+              <span>Key</span>
+              <span>Common Name</span>
+              <span>Latin Name</span>
+              <span>Aliases</span>
+            </div>
+            {aliasRows.map((row, index) => (
+              <div key={`${row.key}-${index}`} className="preset-row preset-row--aliases">
+                <input
+                  type="text"
+                  value={row.key}
+                  onChange={(event) => {
+                    const next = [...aliasRows]
+                    next[index] = { ...row, key: event.target.value }
+                    setAliasRows(next)
+                  }}
+                />
+                <input
+                  type="text"
+                  value={row.commonName}
+                  onChange={(event) => {
+                    const next = [...aliasRows]
+                    next[index] = { ...row, commonName: event.target.value }
+                    setAliasRows(next)
+                  }}
+                />
+                <input
+                  type="text"
+                  value={row.latinName}
+                  onChange={(event) => {
+                    const next = [...aliasRows]
+                    next[index] = { ...row, latinName: event.target.value }
+                    setAliasRows(next)
+                  }}
+                />
+                <input
+                  type="text"
+                  value={row.aliases}
+                  onChange={(event) => {
+                    const next = [...aliasRows]
+                    next[index] = { ...row, aliases: event.target.value }
+                    setAliasRows(next)
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <button className="primary-btn" type="button" onClick={handleAliasSave}>
+            Save Aliases
           </button>
         </div>
 

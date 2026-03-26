@@ -36,6 +36,8 @@ export default function AppLayout() {
           onToggleNav={() => setNavOpen((value) => !value)}
           onOpenAccount={() => setAccountOpen(true)}
           grows={state.grows}
+          sessions={state.foragingSessions}
+          finds={state.foragingFinds}
         />
         <div className="app-content">
           <Outlet context={{ searchQuery, openQuickLog }} />

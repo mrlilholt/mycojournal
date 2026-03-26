@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../../store/auth.jsx'
-import { fuzzyMatchesGrow } from '../../utils/search.js'
+import { fuzzyMatchesFind, fuzzyMatchesGrow, fuzzyMatchesSession } from '../../utils/search.js'
 
 export default function TopBar({
   searchQuery,
@@ -9,24 +9,56 @@ export default function TopBar({
   onQuickLog,
   onToggleNav,
   onOpenAccount,
-  grows = []
+  grows = [],
+  sessions = [],
+  finds = []
 }) {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const searchRef = useRef(null)
   const suggestions = useMemo(
-    () =>
-      searchQuery
-        ? grows.filter((grow) => fuzzyMatchesGrow(grow, searchQuery)).slice(0, 8)
-        : [],
-    [grows, searchQuery]
+    () => {
+      if (!searchQuery) return []
+      const growResults = grows
+        .filter((grow) => fuzzyMatchesGrow(grow, searchQuery))
+        .slice(0, 4)
+        .map((grow) => ({
+          id: `grow-${grow.id}`,
+          type: 'Grow',
+          title: grow.name,
+          subtitle: `${grow.species} · ${grow.status === 'complete' ? 'Harvested' : 'Active'} · ${grow.phase}`,
+          to: `/grows/${grow.id}`
+        }))
+      const sessionResults = sessions
+        .filter((session) => fuzzyMatchesSession(session, searchQuery))
+        .slice(0, 4)
+        .map((session) => ({
+          id: `session-${session.id}`,
+          type: 'Session',
+          title: session.title || 'Foraging Session',
+          subtitle: `${session.location?.placeLabel || 'Unknown location'} · ${session.outcome}`,
+          to: `/forager/${session.id}`
+        }))
+      const findResults = finds
+        .filter((find) => fuzzyMatchesFind(find, searchQuery))
+        .slice(0, 4)
+        .map((find) => ({
+          id: `find-${find.id}`,
+          type: 'Find',
+          title: find.species?.commonName || find.species?.latinName || 'Unknown find',
+          subtitle: `${find.species?.latinName || 'Manual identification'} · ${find.location?.placeLabel || 'Unknown location'}`,
+          to: `/forager/${find.sessionId}#find-${find.id}`
+        }))
+      return [...growResults, ...sessionResults, ...findResults].slice(0, 8)
+    },
+    [grows, sessions, finds, searchQuery]
   )
 
-  const handleSelect = (growId) => {
+  const handleSelect = (path) => {
     setOpen(false)
     onSearchChange('')
-    navigate(`/grows/${growId}`)
+    navigate(path)
   }
 
   useEffect(() => {
@@ -64,12 +96,11 @@ export default function TopBar({
                     className="search-result"
                     type="button"
                     onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => handleSelect(grow.id)}
+                    onClick={() => handleSelect(grow.to)}
                   >
-                    <strong>{grow.name}</strong>
-                    <span className="muted">
-                      {grow.species} · {grow.status === 'complete' ? 'Harvested' : 'Active'} · {grow.phase}
-                    </span>
+                    <strong>{grow.title}</strong>
+                    <span className="muted">{grow.subtitle}</span>
+                    <span className="badge">{grow.type}</span>
                   </button>
                 ))}
               </div>

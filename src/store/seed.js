@@ -1,11 +1,14 @@
 import { SPECIES_LIST, SPECIES_PRESETS } from '../utils/speciesDefaults.js'
 import { getDefaultHarvestWindows } from '../utils/growthPhases.js'
+import { getMergedForagerSpeciesAliases } from '../utils/foragerSpeciesMatch.js'
 
 export function createSeedState() {
   const grows = []
   const logs = []
   const events = []
   const harvests = []
+  const foragingSessions = []
+  const foragingFinds = []
 
   const settings = {
     units: 'F',
@@ -30,8 +33,15 @@ export function createSeedState() {
       compactCards: false,
       defaultGalleryView: 'grow',
       timelineExpandedDefault: true
-    }
+    },
+    foragerPreferences: {
+      defaultMapZoom: 14,
+      showExactCoordsInOverview: false,
+      autoCompleteSessionAfterSave: false,
+      galleryDefaultSource: 'all'
+    },
+    foragerSpeciesAliases: getMergedForagerSpeciesAliases()
   }
 
-  return { grows, logs, events, harvests, settings }
+  return { grows, logs, events, harvests, foragingSessions, foragingFinds, settings }
 }

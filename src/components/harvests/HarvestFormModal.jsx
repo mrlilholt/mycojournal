@@ -77,10 +77,9 @@ export default function HarvestFormModal({ open, onClose, growId, initialHarvest
       if (initialHarvest?.id) {
         await actions.updateHarvest(initialHarvest.id, payload)
         if (user) {
-          const removedPaths = (initialHarvest.photos || [])
+          const removedPhotos = (initialHarvest.photos || [])
             .filter((photo) => !existingPhotos.some((current) => current.id === photo.id))
-            .map((photo) => photo.path)
-          await deleteEntryPhotos(null, removedPaths)
+          await deleteEntryPhotos(null, removedPhotos)
         }
       } else {
         await actions.addHarvest({

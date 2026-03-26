@@ -129,10 +129,9 @@ export default function LogFormModal({ open, onClose, growId, growOptions, initi
       if (initialLog?.id) {
         await actions.updateLog(initialLog.id, { ...payload, photos })
         if (user) {
-          const removedPaths = (initialLog.photos || [])
+          const removedPhotos = (initialLog.photos || [])
             .filter((photo) => !existingPhotos.some((current) => current.id === photo.id))
-            .map((photo) => photo.path)
-          await deleteEntryPhotos(null, removedPaths)
+          await deleteEntryPhotos(null, removedPhotos)
         }
       } else {
         await actions.addLog({ id: entryId, ...payload, photos })

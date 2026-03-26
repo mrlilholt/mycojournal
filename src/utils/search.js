@@ -24,3 +24,28 @@ export function fuzzyMatchesGrow(grow, query) {
     (grow.tags || []).join(' ')
   )
 }
+
+export function fuzzyMatchesSession(session, query) {
+  return fuzzyIncludes(
+    query,
+    session.title,
+    session.notes,
+    session.location?.placeLabel,
+    session.recentWeather?.note,
+    session.outcome,
+    session.status
+  )
+}
+
+export function fuzzyMatchesFind(find, query) {
+  return fuzzyIncludes(
+    query,
+    find.species?.commonName,
+    find.species?.latinName,
+    find.notes,
+    find.habitat,
+    find.substrate,
+    find.hostTree,
+    find.location?.placeLabel
+  )
+}

@@ -1,4 +1,5 @@
 import { uid } from './id.js'
+import { auth } from '../firebase/client.js'
 
 const DEFAULT_MAX_DIMENSION = 1600
 const DEFAULT_QUALITY = 0.78
@@ -113,6 +114,26 @@ export async function uploadEntryPhotos({ userId, entryType, entryId, files, opt
   return Promise.all(uploads)
 }
 
-export async function deleteEntryPhotos(_provider, _paths = []) {
-  return
+export async function deleteEntryPhotos(_provider, photosOrIds = []) {
+  const publicIds = photosOrIds
+    .map((item) => (typeof item === 'string' ? item : item?.publicId))
+    .filter(Boolean)
+
+  if (!publicIds.length) return
+  const user = auth.currentUser
+  if (!user) return
+
+  const token = await user.getIdToken()
+  const response = await fetch('/.netlify/functions/cloudinary-delete', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      authorization: `Bearer ${token}`
+    },
+    body: JSON.stringify({ publicIds })
+  })
+
+  if (!response.ok) {
+    throw new Error('Cloudinary delete failed')
+  }
 }

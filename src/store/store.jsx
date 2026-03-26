@@ -12,6 +12,7 @@ import { uid } from '../utils/id.js'
 import { useAuth } from './auth.jsx'
 import { db } from '../firebase/client.js'
 import { SPECIES_LIST, SPECIES_PRESETS } from '../utils/speciesDefaults.js'
+import { getMergedForagerSpeciesAliases } from '../utils/foragerSpeciesMatch.js'
 import {
   derivePhaseFromMeasurement,
   getDefaultHarvestWindows,
@@ -177,6 +178,73 @@ function reducer(state, action) {
         )
       }
     }
+    case 'ADD_FORAGING_SESSION': {
+      const now = new Date().toISOString()
+      return {
+        ...state,
+        foragingSessions: [
+          {
+            ...action.payload,
+            id: action.payload.id || uid('foraging_session'),
+            createdAt: now,
+            updatedAt: now
+          },
+          ...state.foragingSessions
+        ]
+      }
+    }
+    case 'UPDATE_FORAGING_SESSION': {
+      const { id, updates } = action.payload
+      return {
+        ...state,
+        foragingSessions: state.foragingSessions.map((session) =>
+          session.id === id
+            ? { ...session, ...updates, updatedAt: new Date().toISOString() }
+            : session
+        )
+      }
+    }
+    case 'DELETE_FORAGING_SESSION': {
+      const id = action.payload
+      return {
+        ...state,
+        foragingSessions: state.foragingSessions.filter((session) => session.id !== id),
+        foragingFinds: state.foragingFinds.filter((find) => find.sessionId !== id)
+      }
+    }
+    case 'SET_FORAGING_SESSIONS':
+      return { ...state, foragingSessions: action.payload }
+    case 'ADD_FORAGING_FIND': {
+      const now = new Date().toISOString()
+      return {
+        ...state,
+        foragingFinds: [
+          {
+            ...action.payload,
+            id: action.payload.id || uid('foraging_find'),
+            createdAt: now,
+            updatedAt: now
+          },
+          ...state.foragingFinds
+        ]
+      }
+    }
+    case 'UPDATE_FORAGING_FIND': {
+      const { id, updates } = action.payload
+      return {
+        ...state,
+        foragingFinds: state.foragingFinds.map((find) =>
+          find.id === id ? { ...find, ...updates, updatedAt: new Date().toISOString() } : find
+        )
+      }
+    }
+    case 'DELETE_FORAGING_FIND':
+      return {
+        ...state,
+        foragingFinds: state.foragingFinds.filter((find) => find.id !== action.payload)
+      }
+    case 'SET_FORAGING_FINDS':
+      return { ...state, foragingFinds: action.payload }
     case 'UPDATE_SETTINGS': {
       return {
         ...state,
@@ -197,7 +265,14 @@ function reducer(state, action) {
     case 'SET_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.payload } }
     case 'IMPORT_STATE':
-      return action.payload
+      return {
+        ...initialState,
+        ...action.payload,
+        settings: {
+          ...initialState.settings,
+          ...(action.payload.settings || {})
+        }
+      }
     default:
       return state
   }
@@ -244,6 +319,12 @@ async function seedFirestore(userId, seedState) {
   seedState.harvests.forEach((harvest) => {
     batch.set(doc(db, 'users', userId, 'harvests', harvest.id), harvest)
   })
+  ;(seedState.foragingSessions || []).forEach((session) => {
+    batch.set(doc(db, 'users', userId, 'foragingSessions', session.id), session)
+  })
+  ;(seedState.foragingFinds || []).forEach((find) => {
+    batch.set(doc(db, 'users', userId, 'foragingFinds', find.id), find)
+  })
   batch.set(settingsRef(userId), seedState.settings)
   await batch.commit()
 }
@@ -270,6 +351,15 @@ async function ensureSettings(userId, settings) {
   }
   if (!data.uiPreferences) {
     updates.uiPreferences = settings.uiPreferences || {}
+  }
+  const defaultForagerPreferences = settings.foragerPreferences || {}
+  const mergedForagerPreferences = { ...defaultForagerPreferences, ...(data.foragerPreferences || {}) }
+  if (!data.foragerPreferences || Object.keys(defaultForagerPreferences).some((key) => data.foragerPreferences?.[key] == null)) {
+    updates.foragerPreferences = mergedForagerPreferences
+  }
+  const mergedForagerAliases = getMergedForagerSpeciesAliases(data.foragerSpeciesAliases || {})
+  if (!data.foragerSpeciesAliases || Object.keys(mergedForagerAliases).some((key) => data.foragerSpeciesAliases?.[key] == null)) {
+    updates.foragerSpeciesAliases = mergedForagerAliases
   }
   const currentHarvestWindows = data.harvestWindows || {}
   const mergedHarvestWindows = {
@@ -348,6 +438,15 @@ async function deleteByGrowId(userId, name, growId) {
   await batch.commit()
 }
 
+async function deleteByField(userId, name, field, value) {
+  const ref = collection(db, 'users', userId, name)
+  const snap = await getDocs(query(ref, where(field, '==', value)))
+  if (snap.empty) return
+  const batch = writeBatch(db)
+  snap.forEach((docSnap) => batch.delete(docSnap.ref))
+  await batch.commit()
+}
+
 export function StoreProvider({ children }) {
   const { user } = useAuth()
   const [hydrated, setHydrated] = useState(false)
@@ -393,6 +492,12 @@ export function StoreProvider({ children }) {
           ),
           onSnapshot(collection(db, 'users', user.uid, 'harvests'), (snap) =>
             dispatch({ type: 'SET_HARVESTS', payload: mapDocs(snap) })
+          ),
+          onSnapshot(collection(db, 'users', user.uid, 'foragingSessions'), (snap) =>
+            dispatch({ type: 'SET_FORAGING_SESSIONS', payload: mapDocs(snap) })
+          ),
+          onSnapshot(collection(db, 'users', user.uid, 'foragingFinds'), (snap) =>
+            dispatch({ type: 'SET_FORAGING_FINDS', payload: mapDocs(snap) })
           ),
           onSnapshot(settingsRef(user.uid), (snap) => {
             if (snap.exists()) {
@@ -589,6 +694,78 @@ export function StoreProvider({ children }) {
         }
         await setDoc(settingsRef(user.uid), payload, { merge: true })
       },
+      addForagingSession: async (payload) => {
+        const id = payload.id || uid('foraging_session')
+        const now = new Date().toISOString()
+        const session = { ...payload, id, createdAt: now, updatedAt: now }
+        if (!user) {
+          dispatch({ type: 'ADD_FORAGING_SESSION', payload: session })
+          return id
+        }
+        await setDoc(doc(db, 'users', user.uid, 'foragingSessions', id), session)
+        return id
+      },
+      updateForagingSession: async (id, updates) => {
+        if (!user) {
+          dispatch({ type: 'UPDATE_FORAGING_SESSION', payload: { id, updates } })
+          return
+        }
+        await updateDoc(doc(db, 'users', user.uid, 'foragingSessions', id), {
+          ...updates,
+          updatedAt: new Date().toISOString()
+        })
+      },
+      deleteForagingSession: async (id) => {
+        if (!user) {
+          dispatch({ type: 'DELETE_FORAGING_SESSION', payload: id })
+          return
+        }
+        await deleteDoc(doc(db, 'users', user.uid, 'foragingSessions', id))
+        await deleteByField(user.uid, 'foragingFinds', 'sessionId', id)
+      },
+      completeForagingSession: async (id, updates = {}) => {
+        const payload = {
+          status: 'complete',
+          endedAt: updates.endedAt || new Date().toISOString(),
+          ...updates
+        }
+        if (!user) {
+          dispatch({ type: 'UPDATE_FORAGING_SESSION', payload: { id, updates: payload } })
+          return
+        }
+        await updateDoc(doc(db, 'users', user.uid, 'foragingSessions', id), {
+          ...payload,
+          updatedAt: new Date().toISOString()
+        })
+      },
+      addForagingFind: async (payload) => {
+        const id = payload.id || uid('foraging_find')
+        const now = new Date().toISOString()
+        const find = { ...payload, id, createdAt: now, updatedAt: now }
+        if (!user) {
+          dispatch({ type: 'ADD_FORAGING_FIND', payload: find })
+          return id
+        }
+        await setDoc(doc(db, 'users', user.uid, 'foragingFinds', id), find)
+        return id
+      },
+      updateForagingFind: async (id, updates) => {
+        if (!user) {
+          dispatch({ type: 'UPDATE_FORAGING_FIND', payload: { id, updates } })
+          return
+        }
+        await updateDoc(doc(db, 'users', user.uid, 'foragingFinds', id), {
+          ...updates,
+          updatedAt: new Date().toISOString()
+        })
+      },
+      deleteForagingFind: async (id) => {
+        if (!user) {
+          dispatch({ type: 'DELETE_FORAGING_FIND', payload: id })
+          return
+        }
+        await deleteDoc(doc(db, 'users', user.uid, 'foragingFinds', id))
+      },
       importState: async (payload) => {
         if (!user) {
           dispatch({ type: 'IMPORT_STATE', payload })
@@ -598,10 +775,12 @@ export function StoreProvider({ children }) {
         await clearCollection(user.uid, 'logs')
         await clearCollection(user.uid, 'events')
         await clearCollection(user.uid, 'harvests')
+        await clearCollection(user.uid, 'foragingSessions')
+        await clearCollection(user.uid, 'foragingFinds')
         await seedFirestore(user.uid, payload)
       }
     }),
-    [user, state.grows]
+    [user, state.grows, state.logs, state.settings.presets]
   )
 
   return (

@@ -3,7 +3,8 @@ import { Link, useOutletContext } from 'react-router-dom'
 import EmptyState from '../components/ui/EmptyState.jsx'
 import { useStore } from '../store/store.jsx'
 import { formatDateTime } from '../utils/date.js'
-import { fuzzyMatchesGrow, fuzzyIncludes } from '../utils/search.js'
+import { formatApproximateLocation } from '../utils/foragerLocation.js'
+import { fuzzyMatchesFind, fuzzyMatchesGrow, fuzzyIncludes, fuzzyMatchesSession } from '../utils/search.js'
 
 function normalizePhoto(photo, fallbackId) {
   if (!photo) return null
@@ -79,6 +80,33 @@ function buildGrowPhotos(grow, logs, harvests) {
     )
 
   return [...logPhotos, ...harvestPhotos].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+}
+
+function buildForagingPhotos(session, finds, showExact = false) {
+  return finds
+    .filter((find) => find.sessionId === session.id && getEntryPhotos(find).length)
+    .flatMap((find) =>
+      getEntryPhotos(find)
+        .map((photo, photoIndex) => {
+          const normalized = normalizePhoto(photo, `${find.id}-photo-${photoIndex}`)
+          if (!normalized) return null
+          return {
+            ...normalized,
+            id: `${find.id}-${normalized.id}`,
+            timestamp: find.observedAt || session.startedAt,
+            kind: 'Foraging',
+            label: find.species?.commonName || find.species?.latinName || 'Unknown find',
+            notes: find.notes || session.notes || '',
+            species: find.species?.latinName || find.species?.commonName || 'Unknown species',
+            growName: session.title || 'Foraging Session',
+            growId: session.id,
+            locationLabel: formatApproximateLocation(find.location || session.location, showExact),
+            sourceType: 'foraging'
+          }
+        })
+        .filter(Boolean)
+    )
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
 }
 
 function PhotoLightbox({ items, index, onClose, onPrev, onNext }) {
@@ -225,10 +253,15 @@ export default function GalleryPage() {
   const { searchQuery } = useOutletContext()
   const defaultGalleryView = state.settings.uiPreferences?.defaultGalleryView || 'grow'
   const [viewMode, setViewMode] = useState(defaultGalleryView)
+  const [sourceMode, setSourceMode] = useState(state.settings.foragerPreferences?.galleryDefaultSource || 'all')
 
   useEffect(() => {
     setViewMode(defaultGalleryView)
   }, [defaultGalleryView])
+
+  useEffect(() => {
+    setSourceMode(state.settings.foragerPreferences?.galleryDefaultSource || 'all')
+  }, [state.settings.foragerPreferences?.galleryDefaultSource])
 
   const growGroups = useMemo(() => {
     return state.grows
@@ -238,6 +271,7 @@ export default function GalleryPage() {
         subtitle: `${grow.species} · ${grow.phase}`,
         openGrowHref: `/grows/${grow.id}`,
         items: buildGrowPhotos(grow, state.logs, state.harvests)
+          .map((item) => ({ ...item, sourceType: 'growing' }))
       }))
       .filter(({ items }) => items.length)
       .filter(({ title, subtitle, openGrowHref }) => {
@@ -249,12 +283,44 @@ export default function GalleryPage() {
       .sort((a, b) => new Date(b.items[b.items.length - 1]?.timestamp || 0) - new Date(a.items[a.items.length - 1]?.timestamp || 0))
   }, [state.grows, state.logs, state.harvests, searchQuery])
 
+  const foragingGroups = useMemo(() => {
+    return state.foragingSessions
+      .map((session) => ({
+        id: `session-${session.id}`,
+        title: session.title || 'Foraging Session',
+        subtitle: `${formatApproximateLocation(session.location)} · ${session.outcome}`,
+        openGrowHref: `/forager/${session.id}`,
+        items: buildForagingPhotos(
+          session,
+          state.foragingFinds,
+          state.settings.foragerPreferences?.showExactCoordsInOverview
+        )
+      }))
+      .filter(({ items }) => items.length)
+      .filter(({ title, subtitle, openGrowHref }) => {
+        if (!searchQuery) return true
+        const sessionId = openGrowHref?.split('/').pop()
+        const session = state.foragingSessions.find((item) => item.id === sessionId)
+        const findMatches = state.foragingFinds.some(
+          (find) => find.sessionId === sessionId && fuzzyMatchesFind(find, searchQuery)
+        )
+        return (session && fuzzyMatchesSession(session, searchQuery)) || findMatches || fuzzyIncludes(searchQuery, title, subtitle)
+      })
+      .sort((a, b) => new Date(b.items[b.items.length - 1]?.timestamp || 0) - new Date(a.items[a.items.length - 1]?.timestamp || 0))
+  }, [state.foragingSessions, state.foragingFinds, state.settings.foragerPreferences, searchQuery])
+
   const speciesGroups = useMemo(() => {
     const grouped = new Map()
-    growGroups.forEach((group) => {
-      const species = group.subtitle.split(' · ')[0]
-      const existing = grouped.get(species) || []
-      grouped.set(species, [...existing, ...group.items])
+    const inputGroups = [
+      ...(sourceMode !== 'foraging' ? growGroups : []),
+      ...(sourceMode !== 'growing' ? foragingGroups : [])
+    ]
+    inputGroups.forEach((group) => {
+      group.items.forEach((item) => {
+        const species = item.species || 'Unknown species'
+        const existing = grouped.get(species) || []
+        grouped.set(species, [...existing, item])
+      })
     })
     return Array.from(grouped.entries())
       .map(([species, items]) => ({
@@ -265,9 +331,17 @@ export default function GalleryPage() {
         items: items.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
       }))
       .sort((a, b) => b.items.length - a.items.length)
-  }, [growGroups])
+  }, [growGroups, foragingGroups, sourceMode])
 
-  const groups = viewMode === 'species' ? speciesGroups : growGroups
+  const groups = useMemo(() => {
+    const baseGroups =
+      sourceMode === 'all'
+        ? [...growGroups, ...foragingGroups]
+        : sourceMode === 'growing'
+          ? growGroups
+          : foragingGroups
+    return viewMode === 'species' ? speciesGroups : baseGroups
+  }, [viewMode, sourceMode, growGroups, foragingGroups, speciesGroups])
 
   return (
     <div className="page">
@@ -277,6 +351,27 @@ export default function GalleryPage() {
           <p className="muted">Review each grow as a chronological visual record.</p>
         </div>
         <div className="toggle-row">
+          <button
+            className={sourceMode === 'all' ? 'secondary-btn' : 'ghost-btn'}
+            type="button"
+            onClick={() => setSourceMode('all')}
+          >
+            All
+          </button>
+          <button
+            className={sourceMode === 'growing' ? 'secondary-btn' : 'ghost-btn'}
+            type="button"
+            onClick={() => setSourceMode('growing')}
+          >
+            Growing
+          </button>
+          <button
+            className={sourceMode === 'foraging' ? 'secondary-btn' : 'ghost-btn'}
+            type="button"
+            onClick={() => setSourceMode('foraging')}
+          >
+            Foraging
+          </button>
           <button
             className={viewMode === 'grow' ? 'secondary-btn' : 'ghost-btn'}
             type="button"
