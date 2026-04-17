@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Privacy Policy | MycoJournal Mobile</title>
+    <meta
+      name="description"
+      content="Privacy Policy for MycoJournal Mobile, including location use, Firebase authentication and Firestore storage, photo uploads, and related third-party services."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg-top: #f6fbff;
+        --bg-mid: #e7f1f8;
+        --bg-bottom: #d7e4ef;
+        --panel: rgba(255, 255, 255, 0.76);
+        --panel-border: rgba(255, 255, 255, 0.78);
+        --text: #203243;
+        --muted: #5e7488;
+        --shadow: 0 24px 44px rgba(68, 92, 122, 0.16);
+        --radius: 28px;
+        --button: #1b7fa0;
+        --button-hover: #146b87;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family:
+          "Avenir Next", Avenir, "Segoe UI", sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top, rgba(255, 255, 255, 0.95), transparent 42%),
+          linear-gradient(180deg, var(--bg-top), var(--bg-mid) 45%, var(--bg-bottom));
+      }
+
+      main {
+        width: min(980px, calc(100vw - 28px));
+        margin: 0 auto;
+        padding: 28px 0 40px;
+        display: grid;
+        gap: 18px;
+      }
+
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--panel-border);
+        border-radius: var(--radius);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px) saturate(135%);
+        padding: 24px;
+      }
+
+      .hero {
+        display: grid;
+        gap: 14px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+
+      .brand img {
+        width: 88px;
+        height: 88px;
+        object-fit: contain;
+      }
+
+      .eyebrow {
+        font-size: 12px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+
+      h1,
+      h2,
+      h3,
+      p,
+      ul {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(2rem, 3vw, 2.8rem);
+        line-height: 1.05;
+      }
+
+      h2 {
+        font-size: 1.2rem;
+        margin-bottom: 12px;
+      }
+
+      h3 {
+        font-size: 1rem;
+      }
+
+      p,
+      li {
+        line-height: 1.68;
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .lede {
+        max-width: 66ch;
+        color: var(--muted);
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 14px;
+      }
+
+      .card {
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.56);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+        padding: 18px;
+        display: grid;
+        gap: 10px;
+      }
+
+      ul {
+        padding-left: 20px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 4px;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 42px;
+        padding: 0 16px;
+        border-radius: 999px;
+        background: var(--button);
+        color: #fff;
+        text-decoration: none;
+        font-weight: 600;
+        transition: background 0.18s ease;
+      }
+
+      .button:hover {
+        background: var(--button-hover);
+      }
+
+      section {
+        display: grid;
+        gap: 12px;
+      }
+
+      @media (max-width: 720px) {
+        main {
+          width: min(100vw - 18px, 980px);
+          padding-top: 16px;
+        }
+
+        .panel {
+          padding: 18px;
+          border-radius: 22px;
+        }
+
+        .brand {
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="panel hero">
+        <div class="brand">
+          <img src="/myco.png" alt="MycoJournal" />
+          <div>
+            <div class="eyebrow">Privacy Policy</div>
+            <h1>Privacy Policy for MycoJournal Mobile</h1>
+          </div>
+        </div>
+        <p class="lede">
+          This Privacy Policy explains how MycoJournal Mobile accesses, collects, uses, stores, and
+          shares data when you use the Android or iOS mobile app.
+        </p>
+        <p class="muted">Last updated: April 17, 2026</p>
+        <div class="actions">
+          <a class="button" href="/">Back to Home</a>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Overview</h2>
+        <p>
+          MycoJournal Mobile is a mushroom cultivation and foraging journal. The app lets signed-in
+          users keep grow records, logs, harvests, foraging sessions, mushroom-find records, notes,
+          settings, and optional photos. Some features also use your device location when you choose
+          to enable location access.
+        </p>
+        <p>
+          This page is intended to support the public privacy-policy requirement for MycoJournal
+          Mobile on Google Play and to describe the app’s current implemented data flows.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Data We Access and Why</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Google sign-in and account identity</h3>
+            <p>
+              <strong>What is involved:</strong> Google account details needed to authenticate you
+              with Firebase, such as your name, email address, and account identifier.
+            </p>
+            <p>
+              <strong>Why the app uses it:</strong> To sign you into your MycoJournal workspace and
+              associate your saved journal data with your account.
+            </p>
+            <p>
+              <strong>Who processes or receives it:</strong> Google and Firebase Authentication
+              process this information to provide sign-in.
+            </p>
+          </article>
+
+          <article class="card">
+            <h3>Journal and app content</h3>
+            <p>
+              <strong>What is involved:</strong> Grow records, logs, harvests, foraging sessions,
+              mushroom finds, notes, settings, timestamps, and related metadata that you create
+              while signed in.
+            </p>
+            <p>
+              <strong>Why the app uses it:</strong> To save and sync your journal history and app
+              settings across sessions.
+            </p>
+            <p><strong>Who processes or receives it:</strong> Stored in Firebase Firestore.</p>
+          </article>
+
+          <article class="card">
+            <h3>Photos you choose to upload</h3>
+            <p>
+              <strong>What is involved:</strong> Photos attached to grows, harvests, and foraging
+              entries, plus related metadata such as file size and dimensions.
+            </p>
+            <p>
+              <strong>Why the app uses it:</strong> To let you document grows, harvests, and wild
+              finds inside the app.
+            </p>
+            <p>
+              <strong>Who processes or receives it:</strong> Uploaded to Cloudinary. Photo deletion
+              requests are routed through the app’s authenticated Netlify function.
+            </p>
+          </article>
+
+          <article class="card">
+            <h3>Location data</h3>
+            <p>
+              <strong>What is involved:</strong> Approximate or precise location, coordinates,
+              accuracy, and place labels when you use location-based foraging features or choose
+              your current location.
+            </p>
+            <p>
+              <strong>Why the app uses it:</strong> To log foraging sessions and mushroom find
+              spots, provide place labels, and fetch local weather context for those entries.
+            </p>
+            <p>
+              <strong>Who processes or receives it:</strong> Used with Nominatim for reverse
+              geocoding, Open-Meteo for weather lookups, and Google Maps features or links when map
+              functionality is used.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Location-Specific Disclosures</h2>
+        <p>
+          MycoJournal Mobile requests foreground location access only for user-facing foraging
+          features, such as capturing your current location for a foraging session or mushroom find,
+          generating a place label from saved coordinates, and fetching weather for that location.
+        </p>
+        <p>
+          The app does not use location for advertising. If you do not grant location permission,
+          you can still use the app, but location-based foraging and weather features may be limited
+          or unavailable.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Third-Party Services</h2>
+        <ul>
+          <li>Google / Firebase for authentication and Firestore-hosted app data.</li>
+          <li>Cloudinary for user-selected photo storage and delivery.</li>
+          <li>Netlify for the authenticated backend function used by photo deletion.</li>
+          <li>Nominatim (OpenStreetMap) for reverse geocoding coordinates into place labels.</li>
+          <li>Open-Meteo for weather lookups based on selected coordinates.</li>
+          <li>Google Maps services when map previews, map links, or related map features are used.</li>
+        </ul>
+      </section>
+
+      <section class="panel">
+        <h2>How Data Is Stored and Protected</h2>
+        <p>
+          MycoJournal Mobile uses Firebase Authentication for sign-in and Firebase Firestore for
+          account-linked journal data. Based on the current implementation, Firestore access is
+          restricted to the authenticated user’s own records. Photo deletion requests are sent
+          through an authenticated backend endpoint rather than an open public delete call.
+        </p>
+        <p>
+          Data sent between the app and service providers is transmitted over network connections
+          provided by those services. No method of storage or transmission is perfectly secure, but
+          the app is designed to use authenticated access controls for account-linked data.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Retention and Deletion</h2>
+        <p>
+          Journal records and settings associated with your signed-in account are retained until
+          they are deleted through the app or otherwise removed from the underlying project data.
+          Uploaded photos remain associated with the related entry unless they are deleted.
+          Temporary logs, backups, or provider-side operational records may persist for limited
+          periods under the service providers’ own retention practices.
+        </p>
+        <p>
+          If you need help with a deletion request that you cannot complete from within the app, use
+          the developer contact method listed on the Google Play listing for MycoJournal Mobile.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Children’s Privacy</h2>
+        <p>
+          MycoJournal Mobile is not designed as a children’s app. If you believe personal data was
+          provided to the app inappropriately, use the developer contact method listed on the Google
+          Play listing for MycoJournal Mobile.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Changes to This Policy</h2>
+        <p>
+          This policy may be updated as MycoJournal Mobile changes. When the policy is updated, the
+          last-updated date on this page will be revised.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Contact</h2>
+        <p>
+          For privacy questions or requests related to MycoJournal Mobile, use the developer contact
+          information provided on the app’s Google Play listing.
+        </p>
+        <div class="actions">
+          <a class="button" href="/">Back to Home</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
